@@ -18,9 +18,6 @@ namespace {
 
 constexpr int kIdLength = 4;
 
-/*
- * Characters IDs are assumed to consist of common characters..
- */
 constexpr QLatin1StringView kIdChars("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-");
 
 int minimumIdWidth(const QTableView* table) {
@@ -55,7 +52,6 @@ void IdColumnWidthTweak::apply() {
         }
         m_tables.append(table);
 
-        // Listen to font change events.
         table->installEventFilter(this);
 
         const QHeaderView* header = table->horizontalHeader();

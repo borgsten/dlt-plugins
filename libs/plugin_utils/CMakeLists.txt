@@ -1,11 +1,15 @@
 # Shared helpers for dlt-viewer plugins. dlt_add_plugin() links it.
 
 add_library(plugin_utils STATIC
+    include/plugin_utils/configurable_plugin.h
     include/plugin_utils/control_plugin.h
     include/plugin_utils/plugin_info.h
-    include/plugin_utils/plugin_state.h
+    include/plugin_utils/plugin_settings.h
+    include/plugin_utils/settings_form.h
+    src/configurable_plugin.cpp
     src/control_plugin.cpp
-    src/plugin_state.cpp
+    src/plugin_settings.cpp
+    src/settings_form.cpp
 )
 
 target_include_directories(plugin_utils PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")

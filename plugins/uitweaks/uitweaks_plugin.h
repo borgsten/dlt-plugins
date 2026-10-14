@@ -1,24 +1,17 @@
 #pragma once
 
-#include <memory>
-#include <utility>
-#include <vector>
-
-#include <QString>
 #include <QWidget>
 
-#include "plugin_utils/control_plugin.h"
+#include "plugin_utils/configurable_plugin.h"
+#include "plugin_utils/settings_form.h"
 
-#include "tweaks/itweak.h"
+#include "tweak_list.h"
 
-/*
- * Applies its tweaks while the plugin is enabled and reverts them when it is
- * disabled.
- */
-class UiTweaksPlugin : public plugin_utils::ControlPlugin {
+class UiTweaksPlugin : public plugin_utils::ConfigurablePlugin {
     Q_OBJECT
     Q_INTERFACES(QDLTPluginInterface)
     Q_INTERFACES(QDltPluginControlInterface)
+    Q_INTERFACES(QDltPluginViewerInterface)
     Q_PLUGIN_METADATA(IID "org.borgsten.DLT.UiTweaksPlugin")
 
  public:
@@ -27,21 +20,8 @@ class UiTweaksPlugin : public plugin_utils::ControlPlugin {
  protected:
     void onMainWindowReady(QWidget* mainWindow) override;
     void onEnabledChanged(bool enabled) override;
+    void buildSettingsForm(plugin_utils::SettingsForm& form) override;
 
  private:
-    /*
-     * Creates a T from args. tweakId names the tweak in logs and should stay
-     * stable, so it can serve as its settings key later.
-     */
-    template <typename T, typename... Args>
-    void addTweak(QString tweakId, Args&&... args) {
-        m_tweaks.push_back({std::move(tweakId), std::make_unique<T>(std::forward<Args>(args)...)});
-    }
-
-    struct Entry {
-        QString id;
-        std::unique_ptr<ITweak> tweak;
-    };
-
-    std::vector<Entry> m_tweaks;
+    TweakList m_tweaks;
 };

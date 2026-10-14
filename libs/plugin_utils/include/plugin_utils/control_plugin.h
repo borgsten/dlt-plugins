@@ -12,41 +12,21 @@
 #include <qdlt/qdltmsg.h>
 
 #include "plugin_utils/plugin_info.h"
+#include "plugin_utils/plugin_settings.h"
 
 namespace plugin_utils {
 
 /*
- * Base for control plugins that act on the main window.
- *
- * Implements the plugin interfaces with defaults and tracks whether the
- * plugin is enabled. A plugin passes its PluginInfo to the constructor and
- * reacts in onMainWindowReady() and onEnabledChanged().
- *
- * The derived class still declares the plugin itself:
- *
- *   class MyPlugin : public plugin_utils::ControlPlugin {
- *       Q_OBJECT
- *       Q_INTERFACES(QDLTPluginInterface)
- *       Q_INTERFACES(QDltPluginControlInterface)
- *       Q_PLUGIN_METADATA(IID "org.example.DLT.MyPlugin")
- *
- *    public:
- *       MyPlugin() : ControlPlugin(kMyPluginInfo) {}
- *       ...
- *   };
+ * Base for control plugins that act on the main window: defaults for the
+ * plugin interfaces and tracking of whether the plugin is enabled.
  */
 class ControlPlugin : public QObject, public QDLTPluginInterface, public QDltPluginControlInterface {
  public:
-    explicit ControlPlugin(const PluginInfo& info) : m_info(info) {}
+    explicit ControlPlugin(const PluginInfo& info) : m_info(info), m_settings(info.settingsGroup) {}
 
     QString name() final { return m_info.name; }
     QString pluginVersion() final { return m_info.version; }
     QString description() final { return m_info.description; }
-
-    /*
-     * Defaults for the interface functions a plugin built on this class does
-     * not use.
-     */
 
     /* QDLTPluginInterface */
     QString pluginInterfaceVersion() override { return {PLUGIN_INTERFACE_VERSION}; }
@@ -69,24 +49,22 @@ class ControlPlugin : public QObject, public QDLTPluginInterface, public QDltPlu
     void configurationChanged() override;
 
  protected:
-    /* Called once at startup, before the first onEnabledChanged() */
+    /* Called once, before the first onEnabledChanged() */
     virtual void onMainWindowReady(QWidget* /*mainWindow*/) {}
-    /*
-     * Called when the plugin becomes enabled or disabled: at startup if it is
-     * enabled, then on Apply Configuration and the global plugin toggle.
-     */
+    /* Mode changes reach the plugin on Apply Configuration */
     virtual void onEnabledChanged(bool /*enabled*/) {}
 
     [[nodiscard]] QWidget* mainWindow() const { return m_mainWindow; }
     [[nodiscard]] bool isEnabled() const { return m_enabled; }
+    [[nodiscard]] const PluginSettings& settings() const { return m_settings; }
 
-    /* Message the viewer shows when one of the interface functions fails */
     void setError(QString error) { m_error = std::move(error); }
 
  private:
     void syncEnabled();
 
     PluginInfo m_info;
+    PluginSettings m_settings;
     QString m_error;
     QPointer<QWidget> m_mainWindow;
     bool m_enabled = false;

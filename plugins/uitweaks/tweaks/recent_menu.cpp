@@ -1,4 +1,4 @@
-#include "tweaks/recent_list_tweak.h"
+#include "tweaks/recent_menu.h"
 
 #include <cstddef>
 #include <utility>
@@ -7,17 +7,24 @@
 #include <QFileInfo>
 #include <QTimer>
 #include <QtLogging>
-#include <qdlt/qdltsettingsmanager.h>
 
-RecentListTweak::RecentListTweak(QWidget* mainWindow, QString menuName, QString historyKey, const char* openSlot,
-                                 int maxEntries)
+using namespace Qt::StringLiterals;
+
+namespace {
+
+const auto kHistoryKey = u"history"_s;
+
+}  // namespace
+
+RecentMenu::RecentMenu(QWidget* mainWindow, QString menuName, plugin_utils::PluginSettings settings,
+                       const char* openSlot, int maxEntries)
     : m_mainWindow(mainWindow),
       m_menuName(std::move(menuName)),
-      m_historyKey(std::move(historyKey)),
+      m_settings(std::move(settings)),
       m_openSlot(openSlot),
       m_maxEntries(maxEntries) {}
 
-void RecentListTweak::apply() {
+void RecentMenu::apply() {
     if (m_applied || !m_mainWindow) {
         return;
     }
@@ -38,15 +45,15 @@ void RecentListTweak::apply() {
     // The viewer's update function touches every action whenever its list
     // changes; react once after it is done.
     for (QAction const* action : m_menu->actions()) {
-        m_connections.append(connect(action, &QAction::changed, this, &RecentListTweak::scheduleSync));
+        m_connections.append(connect(action, &QAction::changed, this, &RecentMenu::scheduleSync));
     }
 
-    m_history = QDltSettingsManager::getInstance()->value(m_historyKey).toStringList();
+    m_history = m_settings.value<QStringList>(kHistoryKey, {});
     m_applied = true;
     sync();
 }
 
-void RecentListTweak::revert() {
+void RecentMenu::revert() {
     if (!m_applied) {
         return;
     }
@@ -61,7 +68,14 @@ void RecentListTweak::revert() {
     m_applied = false;
 }
 
-QStringList RecentListTweak::viewerEntries() const {
+void RecentMenu::setMaxEntries(int maxEntries) {
+    m_maxEntries = maxEntries;
+    if (m_applied) {
+        rebuildExtraActions();
+    }
+}
+
+QStringList RecentMenu::viewerEntries() const {
     QStringList entries;
     for (const QPointer<QAction>& action : m_viewerActions) {
         if (action && action->isVisible() && !action->data().toString().isEmpty()) {
@@ -71,7 +85,7 @@ QStringList RecentListTweak::viewerEntries() const {
     return entries;
 }
 
-void RecentListTweak::scheduleSync() {
+void RecentMenu::scheduleSync() {
     if (m_syncPending) {
         return;
     }
@@ -84,12 +98,12 @@ void RecentListTweak::scheduleSync() {
     });
 }
 
-void RecentListTweak::sync() {
+void RecentMenu::sync() {
     // The viewer's list always holds the newest entries, so it goes first.
     const QStringList viewer = viewerEntries();
     QStringList history = viewer;
     for (const QString& entry : std::as_const(m_history)) {
-        if (history.size() >= m_maxEntries) {
+        if (history.size() >= kMaxEntriesLimit) {
             break;
         }
         // The viewer drops entries it fails to open; drop missing files here too.
@@ -105,7 +119,7 @@ void RecentListTweak::sync() {
     rebuildExtraActions();
 }
 
-void RecentListTweak::rebuildExtraActions() {
+void RecentMenu::rebuildExtraActions() {
     m_extraActions.clear();
 
     if (!m_menu) {
@@ -115,6 +129,9 @@ void RecentListTweak::rebuildExtraActions() {
     const QStringList viewer = viewerEntries();
     size_t number = viewer.size();
     for (const QString& entry : std::as_const(m_history)) {
+        if (std::cmp_greater_equal(number, m_maxEntries)) {
+            break;
+        }
         if (viewer.contains(entry)) {
             continue;
         }
@@ -131,4 +148,4 @@ void RecentListTweak::rebuildExtraActions() {
     }
 }
 
-void RecentListTweak::saveHistory() const { QDltSettingsManager::getInstance()->setValue(m_historyKey, m_history); }
+void RecentMenu::saveHistory() const { m_settings.setValue(kHistoryKey, m_history); }

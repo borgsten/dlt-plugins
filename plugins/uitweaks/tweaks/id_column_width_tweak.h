@@ -10,24 +10,18 @@
 #include "tweaks/itweak.h"
 
 /*
- * Keeps ID columns (app id, context id, ...) at least as wide as the widest
- * possible 4 character ID made of [a-zA-Z0-9_-] in the table's current font,
- * so such IDs are never truncated.
- *
- * The minimal width is recalculated whenever font or fontsize is changed.
+ * Keeps ID columns wide enough for any 4 character ID made of [a-zA-Z0-9_-]
+ * in the table's current font.
  */
 class IdColumnWidthTweak : public QObject, public ITweak {
     Q_OBJECT
 
  public:
-    /*
-     * tableNames: object names of the viewer's table views
-     * columns:    logical column indexes, e.g. FieldNames::AppId
-     */
     IdColumnWidthTweak(QWidget* mainWindow, QStringList tableNames, QList<int> columns);
 
     void apply() override;
     void revert() override;
+    void buildSettings(plugin_utils::SettingsForm& /*form*/) override {}
 
     bool eventFilter(QObject* watched, QEvent* event) override;
 

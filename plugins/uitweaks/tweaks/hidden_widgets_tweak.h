@@ -14,6 +14,7 @@ class HiddenWidgetsTweak : public ITweak {
 
     void apply() override;
     void revert() override;
+    void buildSettings(plugin_utils::SettingsForm& /*form*/) override {}
 
  private:
     QPointer<QWidget> m_mainWindow;

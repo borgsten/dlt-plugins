@@ -1,11 +1,15 @@
 dlt_add_plugin(uitweaksplugin
     uitweaks_plugin.h
     uitweaks_plugin.cpp
+    tweak_list.h
+    tweak_list.cpp
     tweaks/itweak.h
     tweaks/hidden_widgets_tweak.h
     tweaks/hidden_widgets_tweak.cpp
     tweaks/id_column_width_tweak.h
     tweaks/id_column_width_tweak.cpp
-    tweaks/recent_list_tweak.h
-    tweaks/recent_list_tweak.cpp
+    tweaks/recent_menu.h
+    tweaks/recent_menu.cpp
+    tweaks/recent_menus_tweak.h
+    tweaks/recent_menus_tweak.cpp
 )

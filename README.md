@@ -70,6 +70,7 @@ constexpr plugin_utils::PluginInfo kInfo{
     .name = "My Plugin"_L1,
     .version = "0.1.0"_L1,
     .description = "What it does"_L1,
+    .settingsGroup = "myplugin"_L1,
 };
 
 MyPlugin::MyPlugin() : ControlPlugin(kInfo) {}
@@ -83,17 +84,28 @@ Use snake_case file names. Avoid names starting with `ui_`: AUTOUIC treats
 Shared helpers for plugins, linked by `dlt_add_plugin()`:
 
 - `plugin_utils/plugin_info.h`: `PluginInfo`, the name, version and
-  description the viewer shows.
+  description the viewer shows, and the plugin's settings group.
+- `plugin_utils/plugin_settings.h`: `PluginSettings`, the plugin's part of the
+  viewer's settings; every key goes under the plugin's settings group.
+  `ControlPlugin::settings()` returns it. Viewer settings are only reachable
+  explicitly through `QDltSettingsManager`.
+- `plugin_utils/settings_form.h`: `SettingsForm`, a panel of checkboxes and
+  spin boxes bound to `PluginSettings` keys, in titled or checkable group
+  boxes whose keys can go in a settings subgroup.
+- `plugin_utils/configurable_plugin.h`: `ConfigurablePlugin`, a
+  `ControlPlugin` with a settings dock: it implements the viewer plugin
+  interface, and the plugin fills a `SettingsForm` in `buildSettingsForm()`.
+  The plugin also declares `Q_INTERFACES(QDltPluginViewerInterface)`.
 - `plugin_utils/control_plugin.h`: `ControlPlugin`, a base for control
   plugins that act on the main window. Provides defaults for the plugin
   interfaces and calls `onMainWindowReady()` once at startup and
   `onEnabledChanged()` whenever the plugin becomes enabled or disabled.
-- `plugin_utils/plugin_state.h`: `isPluginEnabled()`, the plugin's mode
-  combined with the global plugin switch.
 
 ## Plugins
 
-- `plugins/uitweaks`: hides main window UI elements that are not needed and
-  extends the Recent files/projects/filters menus to 10 entries each. Active
-  only while the plugin is enabled and plugins are globally enabled; mode
-  changes apply on Apply Configuration.
+- `plugins/uitweaks`: hides main window UI elements that are not needed,
+  keeps the app and context ID columns wide enough for their IDs, and extends
+  the Recent files/projects/filters menus (10 entries by default). Each tweak
+  can be turned off, and the number of Recent entries set, in the plugin's
+  dock (plugin mode Show). Active only while the plugin is enabled and plugins
+  are globally enabled; mode changes apply on Apply Configuration.
