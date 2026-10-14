@@ -1,0 +1,21 @@
+BasedOnStyle: Google
+ColumnLimit: 120
+IndentWidth: 4
+AccessModifierOffset: -3
+InsertBraces: true
+
+# Include groups, in order: the file's own header, standard (C++ and system),
+# external libraries (Qt, qdlt), libraries in this repo, the component itself.
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^<qdlt/'
+    Priority: 2
+  - Regex: '^<[a-z0-9_/]+(\.h)?>$'
+    Priority: 1
+    CaseSensitive: true
+  - Regex: '^<'
+    Priority: 2
+  - Regex: '^"plugin_utils/'
+    Priority: 3
+  - Regex: '.*'
+    Priority: 4

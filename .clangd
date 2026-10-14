@@ -1,0 +1,9 @@
+Diagnostics:
+  UnusedIncludes: Strict
+  MissingIncludes: None
+  Includes:
+    IgnoreHeader: ['qcontainerfwd\.h', 'qstringfwd\.h', 'qbytearrayview\.h', 'qtmetamacros\.h']
+  ClangTidy:
+    FastCheckFilter: None
+CompileFlags:
+  Remove: [-mno-direct-extern-access]
