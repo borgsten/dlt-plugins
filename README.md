@@ -39,9 +39,10 @@ Plugins path) or install them with `cmake --install build` (target directory:
 
 ```
 libs/plugin_utils/   shared helpers, linked into every plugin
+libs/dlt_proxy/      the DLT filter proxy, used by the tool and the dltproxy plugin
 plugins/<name>/      one directory per plugin
 cmake/               qdlt lookup and dlt_add_plugin()
-testapp/             DLT log source for manual testing (not built by default)
+tools/               standalone programs
 ```
 
 ## Debug output
@@ -109,3 +110,18 @@ Shared helpers for plugins, linked by `dlt_add_plugin()`:
   can be turned off, and the number of Recent entries set, in the plugin's
   dock (plugin mode Show). Active only while the plugin is enabled and plugins
   are globally enabled; mode changes apply on Apply Configuration.
+- `plugins/dltproxy`: runs the filter proxy inside the viewer, on its own
+  thread, while the plugin is enabled. It connects to the source host and
+  port, and once connected listens on the listen port and forwards the
+  messages with the configured app IDs (all if empty). Until the first
+  client connects, it keeps what it forwards (up to 16 MB). Configure an ECU
+  in the project with `localhost` and the listen port: the viewer retries the
+  connection every second, so it connects once the proxy listens. Settings are in the plugin's dock (plugin
+  mode Show); changes restart the proxy.
+
+## Tools
+
+- `tools/dlt-filter-proxy`: the same proxy as a program, e.g.
+  `dlt-filter-proxy --source localhost:3490 --listen 9999 --appid NAV
+  --appid MED`. Builds on its own too:
+  `cmake -S tools/dlt-filter-proxy -B build/proxy`.

@@ -15,5 +15,8 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(DltViewer)
 include(DltPlugin)
 
+add_subdirectory(libs/dlt_proxy)
 add_subdirectory(libs/plugin_utils)
+add_subdirectory(plugins/dltproxy)
 add_subdirectory(plugins/uitweaks)
+add_subdirectory(tools/dlt-filter-proxy)

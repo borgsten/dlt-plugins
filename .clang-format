@@ -15,7 +15,7 @@ IncludeCategories:
     CaseSensitive: true
   - Regex: '^<'
     Priority: 2
-  - Regex: '^"plugin_utils/'
+  - Regex: '^"(plugin_utils|dlt_proxy)/'
     Priority: 3
   - Regex: '.*'
     Priority: 4
