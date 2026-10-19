@@ -122,6 +122,8 @@ Shared helpers for plugins, linked by `dlt_add_plugin()`:
     Colors other filters already use are marked with a dot. Also keeps the
     color preview's color while the dialog is not focused.
   - Starts on the Filter tab of the project panel.
+  - Temporary: lets the filter dialog's Type box grow to fit its buttons,
+    which its fixed maximum height clips, until the viewer fixes this.
 - `plugins/dltproxy`: runs the filter proxy inside the viewer, on its own
   thread, while the plugin is enabled. It connects to the source host and
   port, and once connected listens on the listen port and forwards the
