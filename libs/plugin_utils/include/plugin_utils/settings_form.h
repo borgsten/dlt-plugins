@@ -31,6 +31,13 @@ struct GroupField {
     QString settingsGroup = {};
 };
 
+struct LineEditField {
+    QString key;
+    QString label;
+    QString defaultValue = {};
+    QString placeholder = {};
+};
+
 struct SpinBoxField {
     QString key;
     QString label;
@@ -49,6 +56,7 @@ class SettingsForm : public QWidget {
 
     void addCheckBox(const CheckBoxField& field, std::function<void(bool)> onChanged = {});
     void addSpinBox(const SpinBoxField& field, std::function<void(int)> onChanged = {});
+    void addLineEdit(const LineEditField& field, std::function<void(QString)> onChanged = {});
     SettingsForm& addGroup(const GroupField& field);
     /*
      * A group box with a checkbox in its title, around the fields buildFields

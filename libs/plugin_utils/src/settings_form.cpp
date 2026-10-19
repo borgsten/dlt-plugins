@@ -3,6 +3,7 @@
 #include <utility>
 
 #include <QCheckBox>
+#include <QLineEdit>
 #include <QMargins>
 #include <QSpinBox>
 #include <QVBoxLayout>
@@ -13,7 +14,7 @@ namespace {
 
 template <typename T>
 auto storeAndNotify(const PluginSettings& settings, QString key, std::function<void(T)> onChanged) {
-    return [settings, key = std::move(key), onChanged = std::move(onChanged)](T value) {
+    return [settings, key = std::move(key), onChanged = std::move(onChanged)](const T& value) {
         settings.setValue(key, value);
         if (onChanged) {
             onChanged(value);
@@ -41,6 +42,20 @@ void SettingsForm::addSpinBox(const SpinBoxField& field, std::function<void(int)
     spinBox->setKeyboardTracking(false);
     connect(spinBox.get(), &QSpinBox::valueChanged, this, storeAndNotify(m_settings, field.key, std::move(onChanged)));
     m_layout.addRow(field.label, spinBox.release());
+}
+
+void SettingsForm::addLineEdit(const LineEditField& field, std::function<void(QString)> onChanged) {
+    auto lineEdit = std::make_unique<QLineEdit>(m_settings.value(field.key, field.defaultValue));
+    lineEdit->setPlaceholderText(field.placeholder);
+    // editingFinished is also emitted when focus leaves an unchanged field.
+    connect(lineEdit.get(), &QLineEdit::editingFinished, this,
+            [lineEdit = lineEdit.get(), store = storeAndNotify(m_settings, field.key, std::move(onChanged))] {
+                if (lineEdit->isModified()) {
+                    lineEdit->setModified(false);
+                    store(lineEdit->text());
+                }
+            });
+    m_layout.addRow(field.label, lineEdit.release());
 }
 
 SettingsForm& SettingsForm::addGroup(const GroupField& field) {
