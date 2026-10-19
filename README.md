@@ -105,21 +105,25 @@ Shared helpers for plugins, linked by `dlt_add_plugin()`:
 
 ## Plugins
 
-- `plugins/uitweaks`: hides main window UI elements that are not needed,
-  keeps the app and context ID columns wide enough for their IDs, extends
-  the Recent files/projects/filters menus (10 entries by default), and starts
-  on the Filter tab of the project panel. Each tweak
-  can be turned off, and the number of Recent entries set, in the plugin's
-  dock (plugin mode Show). Active only while the plugin is enabled and plugins
-  are globally enabled; mode changes apply on Apply Configuration.
+- `plugins/uitweaks`: small changes to the viewer's UI. Each tweak can be
+  turned off, and its options set, in the plugin's dock (plugin mode Show).
+  Active only while the plugin is enabled and plugins are globally enabled;
+  mode changes apply on Apply Configuration.
+  - Hides the filter index range and the filter append widgets.
+  - Keeps the app and context ID columns wide enough for their IDs.
+  - Extends the Recent files/projects/filters menus (10 entries by default).
+  - Uses dark text on filter colors unless the color is dark: in the log
+    table, search results, filter list and filter dialog preview. The
+    brightness threshold is configurable.
+  - Starts on the Filter tab of the project panel.
 - `plugins/dltproxy`: runs the filter proxy inside the viewer, on its own
   thread, while the plugin is enabled. It connects to the source host and
   port, and once connected listens on the listen port and forwards the
   messages with the configured app IDs (all if empty). Until the first
   client connects, it keeps what it forwards (up to 16 MB). Configure an ECU
   in the project with `localhost` and the listen port: the viewer retries the
-  connection every second, so it connects once the proxy listens. Settings are in the plugin's dock (plugin
-  mode Show); changes restart the proxy.
+  connection every second, so it connects once the proxy listens. Settings
+  are in the plugin's dock (plugin mode Show); changes restart the proxy.
 
 ## Tools
 

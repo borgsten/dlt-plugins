@@ -14,6 +14,7 @@
 #include "tweaks/hidden_widgets_tweak.h"
 #include "tweaks/id_column_width_tweak.h"
 #include "tweaks/recent_menus_tweak.h"
+#include "tweaks/text_color_tweak.h"
 
 using namespace Qt::StringLiterals;
 
@@ -43,6 +44,12 @@ constexpr std::array kLogTables{
     "tableView_SearchIndex"_L1,
 };
 
+constexpr std::array kFilterColoredViews{
+    "tableView"_L1,
+    "tableView_SearchIndex"_L1,
+    "filterWidget"_L1,
+};
+
 template <std::size_t N>
 QStringList toStringList(const std::array<QLatin1StringView, N>& names) {
     return QStringList(names.begin(), names.end());
@@ -60,6 +67,8 @@ void UiTweaksPlugin::onMainWindowReady(QWidget* main_window) {
     tweaks_.add<IdColumnWidthTweak>({.id = "idColumnWidth", .title = "Keep app and context ID columns wide enough"},
                                     main_window, toStringList(kLogTables),
                                     QList<int>{FieldNames::AppId, FieldNames::ContextId});
+    tweaks_.add<TextColorTweak>({.id = "textColor", .title = "Prefer dark text on filter colors"}, main_window,
+                                toStringList(kFilterColoredViews));
     tweaks_.add<CurrentTabTweak>({.id = "filterTab", .title = "Start on the Filter tab"}, main_window, u"tabWidget"_s,
                                  u"tabPFilter"_s);
     tweaks_.add<RecentMenusTweak>({.id = "recentMenus", .title = "Extend Recent menus"}, main_window);
