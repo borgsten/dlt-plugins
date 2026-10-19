@@ -106,8 +106,9 @@ Shared helpers for plugins, linked by `dlt_add_plugin()`:
 ## Plugins
 
 - `plugins/uitweaks`: hides main window UI elements that are not needed,
-  keeps the app and context ID columns wide enough for their IDs, and extends
-  the Recent files/projects/filters menus (10 entries by default). Each tweak
+  keeps the app and context ID columns wide enough for their IDs, extends
+  the Recent files/projects/filters menus (10 entries by default), and starts
+  on the Filter tab of the project panel. Each tweak
   can be turned off, and the number of Recent entries set, in the plugin's
   dock (plugin mode Show). Active only while the plugin is enabled and plugins
   are globally enabled; mode changes apply on Apply Configuration.

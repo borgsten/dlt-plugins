@@ -4,6 +4,8 @@ dlt_add_plugin(uitweaksplugin
     tweak_list.h
     tweak_list.cpp
     tweaks/itweak.h
+    tweaks/current_tab_tweak.h
+    tweaks/current_tab_tweak.cpp
     tweaks/hidden_widgets_tweak.h
     tweaks/hidden_widgets_tweak.cpp
     tweaks/id_column_width_tweak.h

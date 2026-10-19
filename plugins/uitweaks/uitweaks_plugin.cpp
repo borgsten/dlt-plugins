@@ -10,6 +10,7 @@
 
 #include "plugin_utils/plugin_info.h"
 
+#include "tweaks/current_tab_tweak.h"
 #include "tweaks/hidden_widgets_tweak.h"
 #include "tweaks/id_column_width_tweak.h"
 #include "tweaks/recent_menus_tweak.h"
@@ -59,6 +60,8 @@ void UiTweaksPlugin::onMainWindowReady(QWidget* main_window) {
     tweaks_.add<IdColumnWidthTweak>({.id = "idColumnWidth", .title = "Keep app and context ID columns wide enough"},
                                     main_window, toStringList(kLogTables),
                                     QList<int>{FieldNames::AppId, FieldNames::ContextId});
+    tweaks_.add<CurrentTabTweak>({.id = "filterTab", .title = "Start on the Filter tab"}, main_window, u"tabWidget"_s,
+                                 u"tabPFilter"_s);
     tweaks_.add<RecentMenusTweak>({.id = "recentMenus", .title = "Extend Recent menus"}, main_window);
 }
 
