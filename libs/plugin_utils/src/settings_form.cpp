@@ -3,6 +3,7 @@
 #include <utility>
 
 #include <QCheckBox>
+#include <QComboBox>
 #include <QLineEdit>
 #include <QMargins>
 #include <QSpinBox>
@@ -56,6 +57,20 @@ void SettingsForm::addLineEdit(const LineEditField& field, std::function<void(QS
                 }
             });
     layout_.addRow(field.label, line_edit.release());
+}
+
+void SettingsForm::addComboBox(const ComboBoxField& field, std::function<void(QString)> on_changed) {
+    auto combo_box = std::make_unique<QComboBox>();
+    for (const ComboBoxField::Choice& choice : field.choices) {
+        combo_box->addItem(choice.label, choice.value);
+    }
+    const int current = combo_box->findData(settings_.value(field.key, field.default_value));
+    combo_box->setCurrentIndex(current >= 0 ? current : combo_box->findData(field.default_value));
+    connect(combo_box.get(), &QComboBox::currentIndexChanged, this,
+            [combo_box = combo_box.get(), store = storeAndNotify(settings_, field.key, std::move(on_changed))] {
+                store(combo_box->currentData().toString());
+            });
+    layout_.addRow(field.label, combo_box.release());
 }
 
 SettingsForm& SettingsForm::addGroup(const GroupField& field) {

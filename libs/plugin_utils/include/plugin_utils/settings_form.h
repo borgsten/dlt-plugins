@@ -6,6 +6,7 @@
 
 #include <QFormLayout>
 #include <QGroupBox>
+#include <QList>
 #include <QString>
 #include <QWidget>
 
@@ -17,6 +18,18 @@ struct CheckBoxField {
     QString key;
     QString label;
     bool default_value = false;
+};
+
+struct ComboBoxField {
+    struct Choice {
+        QString value;
+        QString label;
+    };
+
+    QString key;
+    QString label;
+    QList<Choice> choices;
+    QString default_value;
 };
 
 struct CheckableGroupField {
@@ -57,6 +70,8 @@ class SettingsForm : public QWidget {
     void addCheckBox(const CheckBoxField& field, std::function<void(bool)> on_changed = {});
     void addSpinBox(const SpinBoxField& field, std::function<void(int)> on_changed = {});
     void addLineEdit(const LineEditField& field, std::function<void(QString)> on_changed = {});
+    /* Stores the chosen Choice::value */
+    void addComboBox(const ComboBoxField& field, std::function<void(QString)> on_changed = {});
     SettingsForm& addGroup(const GroupField& field);
     /*
      * A group box with a checkbox in its title, around the fields build_fields
