@@ -15,36 +15,36 @@ constexpr int kMinEntries = 5;
 
 }  // namespace
 
-RecentMenusTweak::RecentMenusTweak(plugin_utils::PluginSettings settings, QWidget* mainWindow)
-    : m_settings(std::move(settings)) {
+RecentMenusTweak::RecentMenusTweak(plugin_utils::PluginSettings settings, QWidget* main_window)
+    : settings_(std::move(settings)) {
     const std::array menus{
         MenuSpec{
             .id = "files",
             .label = "Files",
-            .menuName = "menuRecent_files",
-            .openSlot = SLOT(openRecentFile()),
+            .menu_name = "menuRecent_files",
+            .open_slot = SLOT(openRecentFile()),
         },
         MenuSpec{
             .id = "projects",
             .label = "Projects",
-            .menuName = "menuRecent_projects",
-            .openSlot = SLOT(openRecentProject()),
+            .menu_name = "menuRecent_projects",
+            .open_slot = SLOT(openRecentProject()),
         },
         MenuSpec{
             .id = "filters",
             .label = "Filters",
-            .menuName = "menuRecent_Filters",
-            .openSlot = SLOT(openRecentFilters()),
+            .menu_name = "menuRecent_Filters",
+            .open_slot = SLOT(openRecentFilters()),
         },
     };
     for (const MenuSpec& spec : menus) {
-        addMenu(mainWindow, spec);
+        addMenu(main_window, spec);
     }
 }
 
 void RecentMenusTweak::apply() {
-    m_applied = true;
-    for (const Menu& menu : m_menus) {
+    applied_ = true;
+    for (const Menu& menu : menus_) {
         if (isMenuEnabled(menu)) {
             menu.menu->apply();
         }
@@ -52,41 +52,41 @@ void RecentMenusTweak::apply() {
 }
 
 void RecentMenusTweak::revert() {
-    for (const Menu& menu : m_menus) {
+    for (const Menu& menu : menus_) {
         menu.menu->revert();
     }
-    m_applied = false;
+    applied_ = false;
 }
 
 void RecentMenusTweak::buildSettings(plugin_utils::SettingsForm& form) {
-    // m_menus does not change after construction, so the entries stay put.
-    for (const Menu& menu : m_menus) {
-        form.addCheckBox({.key = menu.id + u'/' + kEnabledKey, .label = menu.label, .defaultValue = true},
-                         [this, menuPtr = &menu](bool enabled) { setMenuEnabled(*menuPtr, enabled); });
+    // menus_ does not change after construction, so the entries stay put.
+    for (const Menu& menu : menus_) {
+        form.addCheckBox({.key = menu.id + u'/' + kEnabledKey, .label = menu.label, .default_value = true},
+                         [this, menu_ptr = &menu](bool enabled) { setMenuEnabled(*menu_ptr, enabled); });
     }
     form.addSpinBox(
         {
             .key = kEntriesKey,
             .label = "Entries",
-            .defaultValue = kDefaultEntries,
+            .default_value = kDefaultEntries,
             .minimum = kMinEntries,
             .maximum = RecentMenu::kMaxEntriesLimit,
         },
-        [this](int maxEntries) { setMaxEntries(maxEntries); });
+        [this](int max_entries) { setMaxEntries(max_entries); });
 }
 
-void RecentMenusTweak::addMenu(QWidget* mainWindow, const MenuSpec& spec) {
-    auto menu = std::make_unique<RecentMenu>(mainWindow, spec.menuName, m_settings.group(spec.id), spec.openSlot,
-                                             m_settings.value(kEntriesKey, kDefaultEntries));
-    m_menus.push_back({.id = spec.id, .label = spec.label, .menu = std::move(menu)});
+void RecentMenusTweak::addMenu(QWidget* main_window, const MenuSpec& spec) {
+    auto menu = std::make_unique<RecentMenu>(main_window, spec.menu_name, settings_.group(spec.id), spec.open_slot,
+                                             settings_.value(kEntriesKey, kDefaultEntries));
+    menus_.push_back({.id = spec.id, .label = spec.label, .menu = std::move(menu)});
 }
 
 bool RecentMenusTweak::isMenuEnabled(const Menu& menu) const {
-    return m_settings.group(menu.id).value(kEnabledKey, true);
+    return settings_.group(menu.id).value(kEnabledKey, true);
 }
 
 void RecentMenusTweak::setMenuEnabled(const Menu& menu, bool enabled) const {
-    if (!m_applied) {
+    if (!applied_) {
         return;
     }
     if (enabled) {
@@ -96,8 +96,8 @@ void RecentMenusTweak::setMenuEnabled(const Menu& menu, bool enabled) const {
     }
 }
 
-void RecentMenusTweak::setMaxEntries(int maxEntries) {
-    for (const Menu& menu : m_menus) {
-        menu.menu->setMaxEntries(maxEntries);
+void RecentMenusTweak::setMaxEntries(int max_entries) {
+    for (const Menu& menu : menus_) {
+        menu.menu->setMaxEntries(max_entries);
     }
 }

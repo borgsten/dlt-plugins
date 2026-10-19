@@ -29,24 +29,24 @@
 
 namespace {
 
-enum class LogLevel : std::uint8_t { Fatal = 1, Error, Warn, Info, Debug, Verbose };
+enum class LogLevel : std::uint8_t { kFatal = 1, kError, kWarn, kInfo, kDebug, kVerbose };
 
 struct Source {
-    std::string_view appId;
-    std::string_view contextId;
+    std::string_view app_id;
+    std::string_view context_id;
     LogLevel level;
     std::string_view text;
 };
 
 constexpr std::array kSources{
-    Source{.appId = "NAV", .contextId = "ROUT", .level = LogLevel::Info, .text = "Route recalculated"},
-    Source{.appId = "NAV", .contextId = "GPS", .level = LogLevel::Debug, .text = "GPS fix received"},
-    Source{.appId = "MED", .contextId = "PLAY", .level = LogLevel::Info, .text = "Playing track"},
-    Source{.appId = "MED", .contextId = "BT", .level = LogLevel::Warn, .text = "Bluetooth link quality low"},
-    Source{.appId = "HMI", .contextId = "UI", .level = LogLevel::Verbose, .text = "Frame rendered"},
-    Source{.appId = "HMI", .contextId = "TOUC", .level = LogLevel::Debug, .text = "Touch event"},
-    Source{.appId = "DIAG", .contextId = "DTC", .level = LogLevel::Error, .text = "DTC stored"},
-    Source{.appId = "SYS", .contextId = "PWR", .level = LogLevel::Fatal, .text = "Voltage out of range"},
+    Source{.app_id = "NAV", .context_id = "ROUT", .level = LogLevel::kInfo, .text = "Route recalculated"},
+    Source{.app_id = "NAV", .context_id = "GPS", .level = LogLevel::kDebug, .text = "GPS fix received"},
+    Source{.app_id = "MED", .context_id = "PLAY", .level = LogLevel::kInfo, .text = "Playing track"},
+    Source{.app_id = "MED", .context_id = "BT", .level = LogLevel::kWarn, .text = "Bluetooth link quality low"},
+    Source{.app_id = "HMI", .context_id = "UI", .level = LogLevel::kVerbose, .text = "Frame rendered"},
+    Source{.app_id = "HMI", .context_id = "TOUC", .level = LogLevel::kDebug, .text = "Touch event"},
+    Source{.app_id = "DIAG", .context_id = "DTC", .level = LogLevel::kError, .text = "DTC stored"},
+    Source{.app_id = "SYS", .context_id = "PWR", .level = LogLevel::kFatal, .text = "Voltage out of range"},
 };
 
 constexpr std::string_view kEcuId = "TEST";
@@ -77,7 +77,7 @@ void log(std::format_string<Args...> format, Args&&... args) {
 using DltTicks = std::chrono::duration<std::int64_t, std::ratio_multiply<std::hecto, std::micro>>;
 
 struct MessageInfo {
-    std::uint8_t messageCounter = 0;
+    std::uint8_t message_counter = 0;
     std::uint32_t timestamp = 0;
     std::uint32_t sequence = 0;
 };
@@ -106,7 +106,7 @@ void putId(std::vector<std::uint8_t>& out, std::string_view value) {
 std::vector<std::uint8_t> buildMessage(const Source& source, const MessageInfo& info) {
     std::vector<std::uint8_t> message;
     message.push_back(kHeaderType);
-    message.push_back(info.messageCounter);
+    message.push_back(info.message_counter);
     putBigEndian(message, std::uint16_t{0});  // length, set below
     putId(message, kEcuId);
     putBigEndian(message, static_cast<std::uint32_t>(::getpid()));
@@ -114,8 +114,8 @@ std::vector<std::uint8_t> buildMessage(const Source& source, const MessageInfo& 
 
     message.push_back(static_cast<std::uint8_t>(kVerbose | (static_cast<unsigned>(source.level) << kLogLevelShift)));
     message.push_back(kArgumentCount);
-    putId(message, source.appId);
-    putId(message, source.contextId);
+    putId(message, source.app_id);
+    putId(message, source.context_id);
 
     putLittleEndian(message, kTypeString);
     putLittleEndian(message, static_cast<std::uint16_t>(source.text.size() + 1));
@@ -195,11 +195,11 @@ std::optional<T> parsePositive(std::string_view text) {
 }  // namespace
 
 int main(int argc, char** argv) {
-    const std::span argSpan(argv, static_cast<std::size_t>(argc));
-    const std::vector<std::string_view> args(argSpan.begin(), argSpan.end());
+    const std::span arg_span(argv, static_cast<std::size_t>(argc));
+    const std::vector<std::string_view> args(arg_span.begin(), arg_span.end());
     const auto port = args.size() > 1 ? parsePositive<std::uint16_t>(args.at(1)) : kDefaultPort;
-    const auto intervalMs = args.size() > 2 ? parsePositive<int>(args.at(2)) : kDefaultIntervalMs;
-    if (args.size() > 3 || !port || !intervalMs) {
+    const auto interval_ms = args.size() > 2 ? parsePositive<int>(args.at(2)) : kDefaultIntervalMs;
+    if (args.size() > 3 || !port || !interval_ms) {
         log("Usage: {} [port] [interval_ms]\n"
             "Sends DLT log messages to all clients (default port {}, every {} ms).",
             args.front(), kDefaultPort, kDefaultIntervalMs);
@@ -211,7 +211,7 @@ int main(int argc, char** argv) {
         log("Cannot listen on port {}: {}", *port, std::system_category().message(errno));
         return 1;
     }
-    log("DLT test source on port {}, ECU {}, one message every {} ms", *port, kEcuId, *intervalMs);
+    log("DLT test source on port {}, ECU {}, one message every {} ms", *port, kEcuId, *interval_ms);
 
     std::vector<int> clients;
     const auto start = std::chrono::steady_clock::now();
@@ -219,11 +219,11 @@ int main(int argc, char** argv) {
         acceptClients(listener, clients);
         const auto elapsed = std::chrono::duration_cast<DltTicks>(std::chrono::steady_clock::now() - start);
         const MessageInfo info{
-            .messageCounter = static_cast<std::uint8_t>(sequence),
+            .message_counter = static_cast<std::uint8_t>(sequence),
             .timestamp = static_cast<std::uint32_t>(elapsed.count()),
             .sequence = sequence,
         };
         broadcast(clients, buildMessage(kSources.at(sequence % kSources.size()), info));
-        std::this_thread::sleep_for(std::chrono::milliseconds(*intervalMs));
+        std::this_thread::sleep_for(std::chrono::milliseconds(*interval_ms));
     }
 }

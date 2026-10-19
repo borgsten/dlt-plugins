@@ -72,7 +72,7 @@ constexpr plugin_utils::PluginInfo kInfo{
     .name = "My Plugin"_L1,
     .version = "0.1.0"_L1,
     .description = "What it does"_L1,
-    .settingsGroup = "myplugin"_L1,
+    .settings_group = "myplugin"_L1,
 };
 
 MyPlugin::MyPlugin() : ControlPlugin(kInfo) {}

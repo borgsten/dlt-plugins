@@ -24,15 +24,15 @@ class RecentMenu : public QObject {
  public:
     static constexpr int kMaxEntriesLimit = 50;
 
-    /* openSlot as SLOT(openRecentFile()) */
-    RecentMenu(QWidget* mainWindow, QString menuName, plugin_utils::PluginSettings settings, const char* openSlot,
-               int maxEntries);
+    /* open_slot as SLOT(openRecentFile()) */
+    RecentMenu(QWidget* main_window, QString menu_name, plugin_utils::PluginSettings settings, const char* open_slot,
+               int max_entries);
 
     void apply();
     void revert();
 
     /* Including the viewer's own entries */
-    void setMaxEntries(int maxEntries);
+    void setMaxEntries(int max_entries);
 
  private:
     [[nodiscard]] QStringList viewerEntries() const;
@@ -41,16 +41,16 @@ class RecentMenu : public QObject {
     void rebuildExtraActions();
     void saveHistory() const;
 
-    QPointer<QWidget> m_mainWindow;
-    QString m_menuName;
-    plugin_utils::PluginSettings m_settings;
-    const char* m_openSlot;
-    int m_maxEntries;
-    QPointer<QMenu> m_menu;
-    bool m_applied = false;
-    bool m_syncPending = false;
-    QList<QPointer<QAction>> m_viewerActions;
-    std::vector<std::unique_ptr<QAction>> m_extraActions;
-    QList<QMetaObject::Connection> m_connections;
-    QStringList m_history;
+    QPointer<QWidget> main_window_;
+    QString menu_name_;
+    plugin_utils::PluginSettings settings_;
+    const char* open_slot_;
+    int max_entries_;
+    QPointer<QMenu> menu_;
+    bool applied_ = false;
+    bool sync_pending_ = false;
+    QList<QPointer<QAction>> viewer_actions_;
+    std::vector<std::unique_ptr<QAction>> extra_actions_;
+    QList<QMetaObject::Connection> connections_;
+    QStringList history_;
 };

@@ -22,7 +22,7 @@ constexpr plugin_utils::PluginInfo kInfo{
     .name = "UI Tweaks"_L1,
     .version = "0.1.0"_L1,
     .description = "Opinionated UI tweaks that doesn't make sense to upstream"_L1,
-    .settingsGroup = "uitweaks"_L1,
+    .settings_group = "uitweaks"_L1,
 };
 
 constexpr std::array kHiddenWidgets{
@@ -43,17 +43,17 @@ QStringList toStringList(const std::array<QLatin1StringView, N>& names) {
 
 }  // namespace
 
-UiTweaksPlugin::UiTweaksPlugin() : ConfigurablePlugin(kInfo), m_tweaks(settings()) {}
+UiTweaksPlugin::UiTweaksPlugin() : ConfigurablePlugin(kInfo), tweaks_(settings()) {}
 
-void UiTweaksPlugin::onMainWindowReady(QWidget* mainWindow) {
-    m_tweaks.add<HiddenWidgetsTweak>({.id = "hiddenWidgets", .title = "Hide the filter index range"}, mainWindow,
-                                     toStringList(kHiddenWidgets));
-    m_tweaks.add<IdColumnWidthTweak>({.id = "idColumnWidth", .title = "Keep app and context ID columns wide enough"},
-                                     mainWindow, toStringList(kLogTables),
-                                     QList<int>{FieldNames::AppId, FieldNames::ContextId});
-    m_tweaks.add<RecentMenusTweak>({.id = "recentMenus", .title = "Extend Recent menus"}, mainWindow);
+void UiTweaksPlugin::onMainWindowReady(QWidget* main_window) {
+    tweaks_.add<HiddenWidgetsTweak>({.id = "hiddenWidgets", .title = "Hide the filter index range"}, main_window,
+                                    toStringList(kHiddenWidgets));
+    tweaks_.add<IdColumnWidthTweak>({.id = "idColumnWidth", .title = "Keep app and context ID columns wide enough"},
+                                    main_window, toStringList(kLogTables),
+                                    QList<int>{FieldNames::AppId, FieldNames::ContextId});
+    tweaks_.add<RecentMenusTweak>({.id = "recentMenus", .title = "Extend Recent menus"}, main_window);
 }
 
-void UiTweaksPlugin::onEnabledChanged(bool enabled) { m_tweaks.setEnabled(enabled); }
+void UiTweaksPlugin::onEnabledChanged(bool enabled) { tweaks_.setEnabled(enabled); }
 
-void UiTweaksPlugin::buildSettingsForm(plugin_utils::SettingsForm& form) { m_tweaks.buildSettingsForm(form); }
+void UiTweaksPlugin::buildSettingsForm(plugin_utils::SettingsForm& form) { tweaks_.buildSettingsForm(form); }

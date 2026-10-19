@@ -15,7 +15,7 @@
 /* Extends the viewer's Recent files, projects and filters menus. */
 class RecentMenusTweak : public ITweak {
  public:
-    RecentMenusTweak(plugin_utils::PluginSettings settings, QWidget* mainWindow);
+    RecentMenusTweak(plugin_utils::PluginSettings settings, QWidget* main_window);
 
     void apply() override;
     void revert() override;
@@ -25,9 +25,9 @@ class RecentMenusTweak : public ITweak {
     struct MenuSpec {
         QString id;
         QString label;
-        QString menuName;
+        QString menu_name;
         /* As SLOT(openRecentFile()) */
-        const char* openSlot;
+        const char* open_slot;
     };
 
     struct Menu {
@@ -36,12 +36,12 @@ class RecentMenusTweak : public ITweak {
         std::unique_ptr<RecentMenu> menu;
     };
 
-    void addMenu(QWidget* mainWindow, const MenuSpec& spec);
+    void addMenu(QWidget* main_window, const MenuSpec& spec);
     [[nodiscard]] bool isMenuEnabled(const Menu& menu) const;
     void setMenuEnabled(const Menu& menu, bool enabled) const;
-    void setMaxEntries(int maxEntries);
+    void setMaxEntries(int max_entries);
 
-    plugin_utils::PluginSettings m_settings;
-    std::vector<Menu> m_menus;
-    bool m_applied = false;
+    plugin_utils::PluginSettings settings_;
+    std::vector<Menu> menus_;
+    bool applied_ = false;
 };

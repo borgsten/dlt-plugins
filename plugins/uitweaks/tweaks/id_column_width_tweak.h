@@ -17,7 +17,7 @@ class IdColumnWidthTweak : public QObject, public ITweak {
     Q_OBJECT
 
  public:
-    IdColumnWidthTweak(QWidget* mainWindow, QStringList tableNames, QList<int> columns);
+    IdColumnWidthTweak(QWidget* main_window, QStringList table_names, QList<int> columns);
 
     void apply() override;
     void revert() override;
@@ -29,11 +29,11 @@ class IdColumnWidthTweak : public QObject, public ITweak {
     void scheduleEnforce();
     void enforce();
 
-    QPointer<QWidget> m_mainWindow;
-    QStringList m_tableNames;
-    QList<int> m_columns;
-    bool m_applied = false;
-    bool m_enforcePending = false;
-    QList<QPointer<QTableView>> m_tables;
-    QList<QMetaObject::Connection> m_connections;
+    QPointer<QWidget> main_window_;
+    QStringList table_names_;
+    QList<int> columns_;
+    bool applied_ = false;
+    bool enforce_pending_ = false;
+    QList<QPointer<QTableView>> tables_;
+    QList<QMetaObject::Connection> connections_;
 };

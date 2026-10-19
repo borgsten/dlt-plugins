@@ -44,78 +44,78 @@ constexpr std::size_t kMaxReadPerPoll = std::size_t{1024} * 1024;
 constexpr std::size_t kMaxClientBacklog = std::size_t{16} * 1024 * 1024;
 constexpr auto kReconnectDelay = 1s;
 
-enum class FrameKind : std::uint8_t { Incomplete, Complete, Invalid };
+enum class FrameKind : std::uint8_t { kIncomplete, kComplete, kInvalid };
 
 struct Frame {
-    FrameKind kind = FrameKind::Incomplete;
+    FrameKind kind = FrameKind::kIncomplete;
     std::size_t size = 0;
     /* Only messages with an extended header have one */
-    std::optional<Id> appId = std::nullopt;
+    std::optional<Id> app_id = std::nullopt;
 };
 
 Frame inspectFrame(std::span<const std::uint8_t> data) {
     std::array<std::uint8_t, kStandardHeaderSize> header{};
     if (data.size() < header.size()) {
-        return {.kind = FrameKind::Incomplete};
+        return {.kind = FrameKind::kIncomplete};
     }
     std::ranges::copy(data.first(header.size()), header.begin());
     const std::uint8_t htyp = header.at(0);
     if ((htyp & kVersionMask) != kVersion1) {
-        return {.kind = FrameKind::Invalid};
+        return {.kind = FrameKind::kInvalid};
     }
 
     const std::size_t length = (std::size_t{header.at(2)} << 8U) | header.at(3);
-    std::size_t extendedHeader = kStandardHeaderSize;
+    std::size_t extended_header = kStandardHeaderSize;
     for (const std::uint8_t flag : {kWithEcuId, kWithSessionId, kWithTimestamp}) {
         if ((htyp & flag) != 0) {
-            extendedHeader += kOptionalFieldSize;
+            extended_header += kOptionalFieldSize;
         }
     }
-    if (length < extendedHeader) {
-        return {.kind = FrameKind::Invalid};
+    if (length < extended_header) {
+        return {.kind = FrameKind::kInvalid};
     }
     if (data.size() < length) {
-        return {.kind = FrameKind::Incomplete};
+        return {.kind = FrameKind::kIncomplete};
     }
-    if ((htyp & kUseExtendedHeader) == 0 || length < extendedHeader + kExtendedHeaderSize) {
-        return {.kind = FrameKind::Complete, .size = length};
+    if ((htyp & kUseExtendedHeader) == 0 || length < extended_header + kExtendedHeaderSize) {
+        return {.kind = FrameKind::kComplete, .size = length};
     }
 
-    Id appId{};
-    std::ranges::copy(data.subspan(extendedHeader + kApidOffset, appId.size()), appId.begin());
-    return {.kind = FrameKind::Complete, .size = length, .appId = appId};
+    Id app_id{};
+    std::ranges::copy(data.subspan(extended_header + kApidOffset, app_id.size()), app_id.begin());
+    return {.kind = FrameKind::kComplete, .size = length, .app_id = app_id};
 }
 
 class FileDescriptor {
  public:
     FileDescriptor() = default;
-    explicit FileDescriptor(int descriptor) : m_fd(descriptor) {}
+    explicit FileDescriptor(int descriptor) : fd_(descriptor) {}
     FileDescriptor(const FileDescriptor&) = delete;
     FileDescriptor& operator=(const FileDescriptor&) = delete;
-    FileDescriptor(FileDescriptor&& other) noexcept : m_fd(std::exchange(other.m_fd, -1)) {}
+    FileDescriptor(FileDescriptor&& other) noexcept : fd_(std::exchange(other.fd_, -1)) {}
     FileDescriptor& operator=(FileDescriptor&& other) noexcept {
-        std::swap(m_fd, other.m_fd);
+        std::swap(fd_, other.fd_);
         return *this;
     }
     ~FileDescriptor() { reset(); }
 
-    [[nodiscard]] int fd() const { return m_fd; }
-    [[nodiscard]] bool isOpen() const { return m_fd >= 0; }
+    [[nodiscard]] int fd() const { return fd_; }
+    [[nodiscard]] bool isOpen() const { return fd_ >= 0; }
     void reset() {
-        if (m_fd >= 0) {
-            ::close(m_fd);
-            m_fd = -1;
+        if (fd_ >= 0) {
+            ::close(fd_);
+            fd_ = -1;
         }
     }
 
  private:
-    int m_fd = -1;
+    int fd_ = -1;
 };
 
 struct Client {
     FileDescriptor socket;
     std::vector<std::uint8_t> output;
-    std::size_t outputStart = 0;
+    std::size_t output_start = 0;
     bool closed = false;
 };
 
@@ -149,14 +149,14 @@ std::optional<Id> toId(std::string_view text) {
 
 class Proxy::Impl {
  public:
-    explicit Impl(Options options) : m_options(std::move(options)) {}
+    explicit Impl(Options options) : options_(std::move(options)) {}
 
     void run() {
         std::vector<pollfd> fds;
-        while (m_running) {
-            if (!m_source.isOpen() && Clock::now() >= m_nextConnect) {
+        while (running_) {
+            if (!source_.isOpen() && Clock::now() >= next_connect_) {
                 startConnect();
-                if (!m_running) {
+                if (!running_) {
                     break;
                 }
             }
@@ -164,15 +164,15 @@ class Proxy::Impl {
             // poll() ignores negative descriptors, which keeps the first
             // three entries in place while the listener or source is closed.
             fds.clear();
-            fds.push_back({.fd = m_stop.fd(), .events = POLLIN, .revents = 0});
-            fds.push_back({.fd = m_listener.fd(), .events = POLLIN, .revents = 0});
+            fds.push_back({.fd = stop_.fd(), .events = POLLIN, .revents = 0});
+            fds.push_back({.fd = listener_.fd(), .events = POLLIN, .revents = 0});
             fds.push_back({
-                .fd = m_source.fd(),
-                .events = static_cast<short>(m_connecting ? POLLOUT : POLLIN),
+                .fd = source_.fd(),
+                .events = static_cast<short>(connecting_ ? POLLOUT : POLLIN),
                 .revents = 0,
             });
-            for (const auto& client : m_clients) {
-                const bool pending = client->outputStart < client->output.size();
+            for (const auto& client : clients_) {
+                const bool pending = client->output_start < client->output.size();
                 fds.push_back({
                     .fd = client->socket.fd(),
                     .events = pending ? pollFlags({POLLIN, POLLOUT}) : pollFlags({POLLIN}),
@@ -181,9 +181,9 @@ class Proxy::Impl {
             }
 
             int timeout = -1;
-            if (!m_source.isOpen()) {
+            if (!source_.isOpen()) {
                 timeout = static_cast<int>(std::chrono::ceil<std::chrono::milliseconds>(
-                                               std::max(m_nextConnect - Clock::now(), Clock::duration{}))
+                                               std::max(next_connect_ - Clock::now(), Clock::duration{}))
                                                .count());
             }
             if (::poll(fds.data(), fds.size(), timeout) < 0 && errno != EINTR) {
@@ -196,28 +196,28 @@ class Proxy::Impl {
 
     void stop() const {
         const std::uint64_t one = 1;
-        static_cast<void>(::write(m_stop.fd(), &one, sizeof(one)));
+        static_cast<void>(::write(stop_.fd(), &one, sizeof(one)));
     }
 
  private:
     void handleEvents(std::span<const pollfd> fds) {
-        auto pollfdIt = fds.begin();
-        if ((pollfdIt++)->revents != 0) {
-            m_running = false;
+        auto pollfd_it = fds.begin();
+        if ((pollfd_it++)->revents != 0) {
+            running_ = false;
             return;
         }
-        const short listenerEvents = (pollfdIt++)->revents;
-        const short sourceEvents = (pollfdIt++)->revents;
-        if (m_connecting && sourceEvents != 0) {
+        const short listener_events = (pollfd_it++)->revents;
+        const short source_events = (pollfd_it++)->revents;
+        if (connecting_ && source_events != 0) {
             finishConnect();
-        } else if (hasAny(sourceEvents, {POLLIN, POLLHUP, POLLERR})) {
+        } else if (hasAny(source_events, {POLLIN, POLLHUP, POLLERR})) {
             readSource();
         }
-        for (const auto& client : m_clients) {
-            if (pollfdIt == fds.end()) {
+        for (const auto& client : clients_) {
+            if (pollfd_it == fds.end()) {
                 break;
             }
-            const short events = (pollfdIt++)->revents;
+            const short events = (pollfd_it++)->revents;
             if (hasAny(events, {POLLIN})) {
                 discardInput(*client);
             }
@@ -225,13 +225,13 @@ class Proxy::Impl {
                 flush(*client);
             }
         }
-        std::erase_if(m_clients, [this](const auto& client) {
+        std::erase_if(clients_, [this](const auto& client) {
             if (client->closed) {
-                log("Client disconnected, {} left", m_clients.size() - 1);
+                log("Client disconnected, {} left", clients_.size() - 1);
             }
             return client->closed;
         });
-        if (hasAny(listenerEvents, {POLLIN})) {
+        if (hasAny(listener_events, {POLLIN})) {
             acceptClient();
         }
     }
@@ -242,26 +242,26 @@ class Proxy::Impl {
         hints.ai_socktype = SOCK_STREAM;
         hints.ai_flags = AI_PASSIVE;
         addrinfo* result = nullptr;
-        const std::string port = std::to_string(m_options.listenPort);
+        const std::string port = std::to_string(options_.listen_port);
         if (const int error = ::getaddrinfo(nullptr, port.c_str(), &hints, &result); error != 0) {
             log("Invalid listen port: {}", ::gai_strerror(error));
             return false;
         }
         const std::unique_ptr<addrinfo, decltype(&::freeaddrinfo)> address(result, &::freeaddrinfo);
 
-        m_listener = FileDescriptor(::socket(address->ai_family, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0));
+        listener_ = FileDescriptor(::socket(address->ai_family, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0));
         const int disable = 0;
         const int enable = 1;
         // Accept IPv4 clients too.
-        ::setsockopt(m_listener.fd(), IPPROTO_IPV6, IPV6_V6ONLY, &disable, sizeof(disable));
-        ::setsockopt(m_listener.fd(), SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable));
-        if (!m_listener.isOpen() || ::bind(m_listener.fd(), address->ai_addr, address->ai_addrlen) < 0 ||
-            ::listen(m_listener.fd(), SOMAXCONN) < 0) {
-            log("Cannot listen on port {}: {}", m_options.listenPort, lastError());
-            m_listener.reset();
+        ::setsockopt(listener_.fd(), IPPROTO_IPV6, IPV6_V6ONLY, &disable, sizeof(disable));
+        ::setsockopt(listener_.fd(), SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable));
+        if (!listener_.isOpen() || ::bind(listener_.fd(), address->ai_addr, address->ai_addrlen) < 0 ||
+            ::listen(listener_.fd(), SOMAXCONN) < 0) {
+            log("Cannot listen on port {}: {}", options_.listen_port, lastError());
+            listener_.reset();
             return false;
         }
-        log("Listening on port {}", m_options.listenPort);
+        log("Listening on port {}", options_.listen_port);
         return true;
     }
 
@@ -269,29 +269,29 @@ class Proxy::Impl {
         addrinfo hints{};
         hints.ai_socktype = SOCK_STREAM;
         addrinfo* result = nullptr;
-        const std::string port = std::to_string(m_options.sourcePort);
-        if (::getaddrinfo(m_options.sourceHost.c_str(), port.c_str(), &hints, &result) != 0) {
+        const std::string port = std::to_string(options_.source_port);
+        if (::getaddrinfo(options_.source_host.c_str(), port.c_str(), &hints, &result) != 0) {
             retryLater();
             return;
         }
-        m_addresses.reset(result);
-        m_nextAddress = result;
+        addresses_.reset(result);
+        next_address_ = result;
         connectToNextAddress();
     }
 
     // A host name can resolve to several addresses (e.g. localhost to ::1 and
     // 127.0.0.1); try each until one accepts.
     void connectToNextAddress() {
-        while (m_nextAddress != nullptr) {
-            const addrinfo* address = m_nextAddress;
-            m_nextAddress = address->ai_next;
-            m_source = FileDescriptor(::socket(address->ai_family, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0));
-            if (::connect(m_source.fd(), address->ai_addr, address->ai_addrlen) == 0) {
+        while (next_address_ != nullptr) {
+            const addrinfo* address = next_address_;
+            next_address_ = address->ai_next;
+            source_ = FileDescriptor(::socket(address->ai_family, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0));
+            if (::connect(source_.fd(), address->ai_addr, address->ai_addrlen) == 0) {
                 onConnected();
                 return;
             }
             if (errno == EINPROGRESS) {
-                m_connecting = true;
+                connecting_ = true;
                 return;
             }
         }
@@ -301,8 +301,8 @@ class Proxy::Impl {
     void finishConnect() {
         int error = 0;
         socklen_t size = sizeof(error);
-        ::getsockopt(m_source.fd(), SOL_SOCKET, SO_ERROR, &error, &size);
-        m_connecting = false;
+        ::getsockopt(source_.fd(), SOL_SOCKET, SO_ERROR, &error, &size);
+        connecting_ = false;
         if (error == 0) {
             onConnected();
         } else {
@@ -311,37 +311,37 @@ class Proxy::Impl {
     }
 
     void onConnected() {
-        m_addresses.reset();
-        m_nextAddress = nullptr;
-        log("Connected to {}:{}", m_options.sourceHost, m_options.sourcePort);
-        m_waitingReported = false;
-        if (m_listener.isOpen()) {
+        addresses_.reset();
+        next_address_ = nullptr;
+        log("Connected to {}:{}", options_.source_host, options_.source_port);
+        waiting_reported_ = false;
+        if (listener_.isOpen()) {
             return;
         }
         if (!listen()) {
-            m_running = false;
+            running_ = false;
             return;
         }
-        m_keepForFirstClient = true;
+        keep_for_first_client_ = true;
     }
 
     void retryLater() {
-        if (!m_waitingReported) {
-            log("Waiting for {}:{}", m_options.sourceHost, m_options.sourcePort);
-            m_waitingReported = true;
+        if (!waiting_reported_) {
+            log("Waiting for {}:{}", options_.source_host, options_.source_port);
+            waiting_reported_ = true;
         }
-        m_source.reset();
-        m_connecting = false;
-        m_input.clear();
-        m_nextConnect = Clock::now() + kReconnectDelay;
+        source_.reset();
+        connecting_ = false;
+        input_.clear();
+        next_connect_ = Clock::now() + kReconnectDelay;
     }
 
     void readSource() {
         for (std::size_t total = 0; total < kMaxReadPerPoll;) {
-            const std::size_t used = m_input.size();
-            m_input.resize(used + kReadChunk);
-            const ssize_t received = ::recv(m_source.fd(), &m_input.at(used), kReadChunk, 0);
-            m_input.resize(used + static_cast<std::size_t>(std::max<ssize_t>(received, 0)));
+            const std::size_t used = input_.size();
+            input_.resize(used + kReadChunk);
+            const ssize_t received = ::recv(source_.fd(), &input_.at(used), kReadChunk, 0);
+            input_.resize(used + static_cast<std::size_t>(std::max<ssize_t>(received, 0)));
             if (received > 0) {
                 total += static_cast<std::size_t>(received);
                 continue;
@@ -356,44 +356,44 @@ class Proxy::Impl {
 
         std::size_t consumed = 0;
         for (;;) {
-            const auto pending = std::span(m_input).subspan(consumed);
+            const auto pending = std::span(input_).subspan(consumed);
             const Frame frame = inspectFrame(pending);
-            if (frame.kind == FrameKind::Incomplete) {
+            if (frame.kind == FrameKind::kIncomplete) {
                 break;
             }
-            if (frame.kind == FrameKind::Invalid) {
+            if (frame.kind == FrameKind::kInvalid) {
                 log("Not a DLT v1 stream, reconnecting");
                 retryLater();
                 return;
             }
-            if (matches(frame.appId)) {
+            if (matches(frame.app_id)) {
                 forward(pending.first(frame.size));
             }
             consumed += frame.size;
         }
-        m_input.erase(m_input.begin(), m_input.begin() + static_cast<std::ptrdiff_t>(consumed));
+        input_.erase(input_.begin(), input_.begin() + static_cast<std::ptrdiff_t>(consumed));
 
-        for (const auto& client : m_clients) {
+        for (const auto& client : clients_) {
             flush(*client);
         }
     }
 
-    [[nodiscard]] bool matches(const std::optional<Id>& appId) const {
-        const std::vector<Id>& appIds = m_options.appIds;
-        return appIds.empty() || (appId && std::ranges::find(appIds, *appId) != appIds.end());
+    [[nodiscard]] bool matches(const std::optional<Id>& app_id) const {
+        const std::vector<Id>& app_ids = options_.app_ids;
+        return app_ids.empty() || (app_id && std::ranges::find(app_ids, *app_id) != app_ids.end());
     }
 
     void forward(std::span<const std::uint8_t> message) {
         // Nothing is lost while the first client retries its connection.
-        if (m_keepForFirstClient) {
-            if (m_backlog.size() + message.size() > kMaxClientBacklog) {
+        if (keep_for_first_client_) {
+            if (backlog_.size() + message.size() > kMaxClientBacklog) {
                 return;
             }
-            m_backlog.insert(m_backlog.end(), message.begin(), message.end());
+            backlog_.insert(backlog_.end(), message.begin(), message.end());
             return;
         }
-        for (const auto& client : m_clients) {
-            if (client->output.size() - client->outputStart + message.size() > kMaxClientBacklog) {
+        for (const auto& client : clients_) {
+            if (client->output.size() - client->output_start + message.size() > kMaxClientBacklog) {
                 log("Client too slow, disconnecting");
                 client->closed = true;
                 continue;
@@ -403,17 +403,17 @@ class Proxy::Impl {
     }
 
     static void flush(Client& client) {
-        while (!client.closed && client.outputStart < client.output.size()) {
-            const ssize_t sent = ::send(client.socket.fd(), &client.output.at(client.outputStart),
-                                        client.output.size() - client.outputStart, MSG_NOSIGNAL);
+        while (!client.closed && client.output_start < client.output.size()) {
+            const ssize_t sent = ::send(client.socket.fd(), &client.output.at(client.output_start),
+                                        client.output.size() - client.output_start, MSG_NOSIGNAL);
             if (sent < 0) {
                 client.closed = !wouldBlock();
                 return;
             }
-            client.outputStart += static_cast<std::size_t>(sent);
+            client.output_start += static_cast<std::size_t>(sent);
         }
         client.output.clear();
-        client.outputStart = 0;
+        client.output_start = 0;
     }
 
     // Clients may send control requests; this proxy only forwards to them.
@@ -431,50 +431,50 @@ class Proxy::Impl {
 
     void acceptClient() {
         for (;;) {
-            FileDescriptor socket(::accept4(m_listener.fd(), nullptr, nullptr, SOCK_NONBLOCK | SOCK_CLOEXEC));
+            FileDescriptor socket(::accept4(listener_.fd(), nullptr, nullptr, SOCK_NONBLOCK | SOCK_CLOEXEC));
             if (!socket.isOpen()) {
                 return;
             }
             auto client = std::make_unique<Client>();
             client->socket = std::move(socket);
-            if (m_keepForFirstClient) {
-                client->output = std::exchange(m_backlog, {});
-                m_keepForFirstClient = false;
+            if (keep_for_first_client_) {
+                client->output = std::exchange(backlog_, {});
+                keep_for_first_client_ = false;
             }
-            m_clients.push_back(std::move(client));
-            log("Client connected, {} total", m_clients.size());
+            clients_.push_back(std::move(client));
+            log("Client connected, {} total", clients_.size());
         }
     }
 
     template <typename... Args>
     void log(std::format_string<Args...> format, Args&&... args) const {
-        if (m_options.log) {
-            m_options.log(std::format(format, std::forward<Args>(args)...));
+        if (options_.log) {
+            options_.log(std::format(format, std::forward<Args>(args)...));
         }
     }
 
-    Options m_options;
-    FileDescriptor m_stop{::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC)};
-    bool m_running = true;
-    FileDescriptor m_listener;
-    FileDescriptor m_source;
-    std::unique_ptr<addrinfo, decltype(&::freeaddrinfo)> m_addresses{nullptr, &::freeaddrinfo};
-    const addrinfo* m_nextAddress = nullptr;
-    bool m_connecting = false;
-    bool m_waitingReported = false;
-    Clock::time_point m_nextConnect;
-    std::vector<std::uint8_t> m_input;
-    bool m_keepForFirstClient = false;
-    std::vector<std::uint8_t> m_backlog;
-    std::vector<std::unique_ptr<Client>> m_clients;
+    Options options_;
+    FileDescriptor stop_{::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC)};
+    bool running_ = true;
+    FileDescriptor listener_;
+    FileDescriptor source_;
+    std::unique_ptr<addrinfo, decltype(&::freeaddrinfo)> addresses_{nullptr, &::freeaddrinfo};
+    const addrinfo* next_address_ = nullptr;
+    bool connecting_ = false;
+    bool waiting_reported_ = false;
+    Clock::time_point next_connect_;
+    std::vector<std::uint8_t> input_;
+    bool keep_for_first_client_ = false;
+    std::vector<std::uint8_t> backlog_;
+    std::vector<std::unique_ptr<Client>> clients_;
 };
 
 Proxy::Proxy(Options options)
-    : m_impl(std::make_unique<Impl>(std::move(options))), m_thread([impl = m_impl.get()] { impl->run(); }) {}
+    : impl_(std::make_unique<Impl>(std::move(options))), thread_([impl = impl_.get()] { impl->run(); }) {}
 
-// m_thread is joined before m_impl is destroyed.
-Proxy::~Proxy() { m_impl->stop(); }
+// thread_ is joined before impl_ is destroyed.
+Proxy::~Proxy() { impl_->stop(); }
 
-void Proxy::wait() { m_thread.join(); }
+void Proxy::wait() { thread_.join(); }
 
 }  // namespace dlt_proxy

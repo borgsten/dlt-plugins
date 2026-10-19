@@ -24,5 +24,5 @@ class DltProxyPlugin : public plugin_utils::ConfigurablePlugin {
     void restart();
     [[nodiscard]] std::optional<dlt_proxy::Options> readOptions() const;
 
-    std::optional<dlt_proxy::Proxy> m_proxy;
+    std::optional<dlt_proxy::Proxy> proxy_;
 };

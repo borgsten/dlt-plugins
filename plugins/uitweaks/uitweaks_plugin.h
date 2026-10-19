@@ -18,10 +18,10 @@ class UiTweaksPlugin : public plugin_utils::ConfigurablePlugin {
     UiTweaksPlugin();
 
  protected:
-    void onMainWindowReady(QWidget* mainWindow) override;
+    void onMainWindowReady(QWidget* main_window) override;
     void onEnabledChanged(bool enabled) override;
     void buildSettingsForm(plugin_utils::SettingsForm& form) override;
 
  private:
-    TweakList m_tweaks;
+    TweakList tweaks_;
 };

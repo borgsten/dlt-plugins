@@ -10,20 +10,20 @@ namespace {
 
 // The plugin API does not expose the plugin's mode or the global plugin
 // switch, so read them from the viewer's settings.
-bool isPluginEnabled(const QString& pluginName) {
+bool isPluginEnabled(const QString& plugin_name) {
     const QDltSettingsManager* settings = QDltSettingsManager::getInstance();
-    const bool pluginsEnabled = settings->value("startup/pluginsEnabled", true).toBool();
-    const int mode = settings->value("plugin/pluginmodefor" + pluginName, QDltPlugin::ModeDisable).toInt();
-    return pluginsEnabled && mode != QDltPlugin::ModeDisable;
+    const bool plugins_enabled = settings->value("startup/pluginsEnabled", true).toBool();
+    const int mode = settings->value("plugin/pluginmodefor" + plugin_name, QDltPlugin::ModeDisable).toInt();
+    return plugins_enabled && mode != QDltPlugin::ModeDisable;
 }
 
 }  // namespace
 
 // Called once for every plugin, whatever its mode; the only way to reach the
 // main window.
-void ControlPlugin::initMainTableView(QTableView* pTableView) {
-    m_mainWindow = pTableView->window();
-    onMainWindowReady(m_mainWindow);
+void ControlPlugin::initMainTableView(QTableView* p_table_view) {
+    main_window_ = p_table_view->window();
+    onMainWindowReady(main_window_);
     syncEnabled();
 }
 
@@ -31,10 +31,10 @@ void ControlPlugin::configurationChanged() { syncEnabled(); }
 
 void ControlPlugin::syncEnabled() {
     const bool enabled = isPluginEnabled(name());
-    if (enabled == m_enabled) {
+    if (enabled == enabled_) {
         return;
     }
-    m_enabled = enabled;
+    enabled_ = enabled;
     onEnabledChanged(enabled);
 }
 

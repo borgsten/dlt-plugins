@@ -32,12 +32,12 @@ class TweakList {
     T& add(Info info, Args&&... args) {
         std::unique_ptr<T> tweak;
         if constexpr (std::is_constructible_v<T, plugin_utils::PluginSettings, Args...>) {
-            tweak = std::make_unique<T>(m_settings.group(info.id), std::forward<Args>(args)...);
+            tweak = std::make_unique<T>(settings_.group(info.id), std::forward<Args>(args)...);
         } else {
             tweak = std::make_unique<T>(std::forward<Args>(args)...);
         }
         T& ref = *tweak;
-        m_entries.push_back({std::move(info), std::move(tweak)});
+        entries_.push_back({std::move(info), std::move(tweak)});
         return ref;
     }
 
@@ -55,7 +55,7 @@ class TweakList {
     static void applyTweak(const Entry& entry);
     static void revertTweak(const Entry& entry);
 
-    plugin_utils::PluginSettings m_settings;
-    std::vector<Entry> m_entries;
-    bool m_enabled = false;
+    plugin_utils::PluginSettings settings_;
+    std::vector<Entry> entries_;
+    bool enabled_ = false;
 };

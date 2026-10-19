@@ -5,16 +5,16 @@
 #include <QDebug>
 #include <QtLogging>
 
-HiddenWidgetsTweak::HiddenWidgetsTweak(QWidget* mainWindow, QStringList objectNames)
-    : m_mainWindow(mainWindow), m_objectNames(std::move(objectNames)) {}
+HiddenWidgetsTweak::HiddenWidgetsTweak(QWidget* main_window, QStringList object_names)
+    : main_window_(main_window), object_names_(std::move(object_names)) {}
 
 void HiddenWidgetsTweak::apply() {
-    if (!m_mainWindow) {
+    if (!main_window_) {
         return;
     }
 
-    for (const QString& name : std::as_const(m_objectNames)) {
-        auto* widget = m_mainWindow->findChild<QWidget*>(name);
+    for (const QString& name : std::as_const(object_names_)) {
+        auto* widget = main_window_->findChild<QWidget*>(name);
         if (widget == nullptr) {
             qWarning() << "UI Tweaks: widget not found:" << name;
             continue;
@@ -23,15 +23,15 @@ void HiddenWidgetsTweak::apply() {
             continue;
         }
         widget->hide();
-        m_hiddenByUs.append(widget);
+        hidden_by_us_.append(widget);
     }
 }
 
 void HiddenWidgetsTweak::revert() {
-    for (const QPointer<QWidget>& widget : std::as_const(m_hiddenByUs)) {
+    for (const QPointer<QWidget>& widget : std::as_const(hidden_by_us_)) {
         if (widget) {
             widget->show();
         }
     }
-    m_hiddenByUs.clear();
+    hidden_by_us_.clear();
 }

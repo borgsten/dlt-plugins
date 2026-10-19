@@ -18,11 +18,11 @@ using Id = std::array<char, 4>;
 std::optional<Id> toId(std::string_view text);
 
 struct Options {
-    std::string sourceHost;
-    std::uint16_t sourcePort = 0;
-    std::uint16_t listenPort = 0;
+    std::string source_host;
+    std::uint16_t source_port = 0;
+    std::uint16_t listen_port = 0;
     /* Empty forwards every message */
-    std::vector<Id> appIds;
+    std::vector<Id> app_ids;
     std::function<void(const std::string&)> log;
 };
 
@@ -47,8 +47,8 @@ class Proxy {
 
  private:
     class Impl;
-    std::unique_ptr<Impl> m_impl;
-    std::jthread m_thread;
+    std::unique_ptr<Impl> impl_;
+    std::jthread thread_;
 };
 
 }  // namespace dlt_proxy

@@ -13,11 +13,11 @@ namespace plugin_utils {
 namespace {
 
 template <typename T>
-auto storeAndNotify(const PluginSettings& settings, QString key, std::function<void(T)> onChanged) {
-    return [settings, key = std::move(key), onChanged = std::move(onChanged)](const T& value) {
+auto storeAndNotify(const PluginSettings& settings, QString key, std::function<void(T)> on_changed) {
+    return [settings, key = std::move(key), on_changed = std::move(on_changed)](const T& value) {
         settings.setValue(key, value);
-        if (onChanged) {
-            onChanged(value);
+        if (on_changed) {
+            on_changed(value);
         }
     };
 }
@@ -25,74 +25,75 @@ auto storeAndNotify(const PluginSettings& settings, QString key, std::function<v
 }  // namespace
 
 SettingsForm::SettingsForm(PluginSettings settings, QWidget* parent)
-    : QWidget(parent), m_settings(std::move(settings)) {}
+    : QWidget(parent), settings_(std::move(settings)) {}
 
-void SettingsForm::addCheckBox(const CheckBoxField& field, std::function<void(bool)> onChanged) {
-    auto checkBox = std::make_unique<QCheckBox>(field.label);
-    checkBox->setChecked(m_settings.value(field.key, field.defaultValue));
-    connect(checkBox.get(), &QCheckBox::toggled, this, storeAndNotify(m_settings, field.key, std::move(onChanged)));
-    m_layout.addRow(checkBox.release());
+void SettingsForm::addCheckBox(const CheckBoxField& field, std::function<void(bool)> on_changed) {
+    auto check_box = std::make_unique<QCheckBox>(field.label);
+    check_box->setChecked(settings_.value(field.key, field.default_value));
+    connect(check_box.get(), &QCheckBox::toggled, this, storeAndNotify(settings_, field.key, std::move(on_changed)));
+    layout_.addRow(check_box.release());
 }
 
-void SettingsForm::addSpinBox(const SpinBoxField& field, std::function<void(int)> onChanged) {
-    auto spinBox = std::make_unique<QSpinBox>();
-    spinBox->setRange(field.minimum, field.maximum);
-    spinBox->setValue(m_settings.value(field.key, field.defaultValue));
+void SettingsForm::addSpinBox(const SpinBoxField& field, std::function<void(int)> on_changed) {
+    auto spin_box = std::make_unique<QSpinBox>();
+    spin_box->setRange(field.minimum, field.maximum);
+    spin_box->setValue(settings_.value(field.key, field.default_value));
     // Don't report every typed digit.
-    spinBox->setKeyboardTracking(false);
-    connect(spinBox.get(), &QSpinBox::valueChanged, this, storeAndNotify(m_settings, field.key, std::move(onChanged)));
-    m_layout.addRow(field.label, spinBox.release());
+    spin_box->setKeyboardTracking(false);
+    connect(spin_box.get(), &QSpinBox::valueChanged, this, storeAndNotify(settings_, field.key, std::move(on_changed)));
+    layout_.addRow(field.label, spin_box.release());
 }
 
-void SettingsForm::addLineEdit(const LineEditField& field, std::function<void(QString)> onChanged) {
-    auto lineEdit = std::make_unique<QLineEdit>(m_settings.value(field.key, field.defaultValue));
-    lineEdit->setPlaceholderText(field.placeholder);
+void SettingsForm::addLineEdit(const LineEditField& field, std::function<void(QString)> on_changed) {
+    auto line_edit = std::make_unique<QLineEdit>(settings_.value(field.key, field.default_value));
+    line_edit->setPlaceholderText(field.placeholder);
     // editingFinished is also emitted when focus leaves an unchanged field.
-    connect(lineEdit.get(), &QLineEdit::editingFinished, this,
-            [lineEdit = lineEdit.get(), store = storeAndNotify(m_settings, field.key, std::move(onChanged))] {
-                if (lineEdit->isModified()) {
-                    lineEdit->setModified(false);
-                    store(lineEdit->text());
+    connect(line_edit.get(), &QLineEdit::editingFinished, this,
+            [line_edit = line_edit.get(), store = storeAndNotify(settings_, field.key, std::move(on_changed))] {
+                if (line_edit->isModified()) {
+                    line_edit->setModified(false);
+                    store(line_edit->text());
                 }
             });
-    m_layout.addRow(field.label, lineEdit.release());
+    layout_.addRow(field.label, line_edit.release());
 }
 
 SettingsForm& SettingsForm::addGroup(const GroupField& field) {
-    auto content = createSubForm(field.settingsGroup);
+    auto content = createSubForm(field.settings_group);
     SettingsForm& ref = *content;
     addBox(std::make_unique<QGroupBox>(field.title), std::move(content));
     return ref;
 }
 
 void SettingsForm::addCheckableGroup(const CheckableGroupField& field,
-                                     const std::function<void(SettingsForm&)>& buildFields,
-                                     std::function<void(bool)> onChanged) {
-    auto content = createSubForm(field.settingsGroup);
-    buildFields(*content);
+                                     const std::function<void(SettingsForm&)>& build_fields,
+                                     std::function<void(bool)> on_changed) {
+    auto content = createSubForm(field.settings_group);
+    build_fields(*content);
     if (content->isEmpty()) {
-        addCheckBox({.key = field.key, .label = field.title, .defaultValue = field.defaultValue}, std::move(onChanged));
+        addCheckBox({.key = field.key, .label = field.title, .default_value = field.default_value},
+                    std::move(on_changed));
         return;
     }
 
     // Unchecking the box also disables its fields.
     auto box = std::make_unique<QGroupBox>(field.title);
     box->setCheckable(true);
-    box->setChecked(m_settings.value(field.key, field.defaultValue));
-    connect(box.get(), &QGroupBox::toggled, this, storeAndNotify(m_settings, field.key, std::move(onChanged)));
+    box->setChecked(settings_.value(field.key, field.default_value));
+    connect(box.get(), &QGroupBox::toggled, this, storeAndNotify(settings_, field.key, std::move(on_changed)));
     addBox(std::move(box), std::move(content));
 }
 
-std::unique_ptr<SettingsForm> SettingsForm::createSubForm(const QString& settingsGroup) const {
-    return std::make_unique<SettingsForm>(settingsGroup.isEmpty() ? m_settings : m_settings.group(settingsGroup));
+std::unique_ptr<SettingsForm> SettingsForm::createSubForm(const QString& settings_group) const {
+    return std::make_unique<SettingsForm>(settings_group.isEmpty() ? settings_ : settings_.group(settings_group));
 }
 
 void SettingsForm::addBox(std::unique_ptr<QGroupBox> box, std::unique_ptr<SettingsForm> content) {
-    content->m_layout.setContentsMargins(QMargins());
-    auto boxLayout = std::make_unique<QVBoxLayout>();
-    boxLayout->addWidget(content.release());
-    box->setLayout(boxLayout.release());
-    m_layout.addRow(box.release());
+    content->layout_.setContentsMargins(QMargins());
+    auto box_layout = std::make_unique<QVBoxLayout>();
+    box_layout->addWidget(content.release());
+    box->setLayout(box_layout.release());
+    layout_.addRow(box.release());
 }
 
 }  // namespace plugin_utils

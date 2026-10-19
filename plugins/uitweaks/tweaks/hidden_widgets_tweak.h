@@ -10,14 +10,14 @@
 /* Hides main window widgets by object name. */
 class HiddenWidgetsTweak : public ITweak {
  public:
-    HiddenWidgetsTweak(QWidget* mainWindow, QStringList objectNames);
+    HiddenWidgetsTweak(QWidget* main_window, QStringList object_names);
 
     void apply() override;
     void revert() override;
     void buildSettings(plugin_utils::SettingsForm& /*form*/) override {}
 
  private:
-    QPointer<QWidget> m_mainWindow;
-    QStringList m_objectNames;
-    QList<QPointer<QWidget>> m_hiddenByUs;
+    QPointer<QWidget> main_window_;
+    QStringList object_names_;
+    QList<QPointer<QWidget>> hidden_by_us_;
 };

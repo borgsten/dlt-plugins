@@ -22,69 +22,69 @@ constexpr QLatin1StringView kIdChars("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOP
 
 int minimumIdWidth(const QTableView* table) {
     const QFontMetrics metrics(table->font());
-    int widestChar = 0;
+    int widest_char = 0;
     for (char const c : kIdChars) {
-        widestChar = qMax(widestChar, metrics.horizontalAdvance(QLatin1Char(c)));
+        widest_char = qMax(widest_char, metrics.horizontalAdvance(QLatin1Char(c)));
     }
 
     // Item views draw text inset by this margin on both sides.
-    const int textMargin = table->style()->pixelMetric(QStyle::PM_FocusFrameHMargin, nullptr, table) + 1;
+    const int text_margin = table->style()->pixelMetric(QStyle::PM_FocusFrameHMargin, nullptr, table) + 1;
     // The grid line is drawn inside the cell.
     const int grid = table->showGrid() ? 1 : 0;
-    return (kIdLength * widestChar) + (2 * textMargin) + grid;
+    return (kIdLength * widest_char) + (2 * text_margin) + grid;
 }
 
 }  // namespace
 
-IdColumnWidthTweak::IdColumnWidthTweak(QWidget* mainWindow, QStringList tableNames, QList<int> columns)
-    : m_mainWindow(mainWindow), m_tableNames(std::move(tableNames)), m_columns(std::move(columns)) {}
+IdColumnWidthTweak::IdColumnWidthTweak(QWidget* main_window, QStringList table_names, QList<int> columns)
+    : main_window_(main_window), table_names_(std::move(table_names)), columns_(std::move(columns)) {}
 
 void IdColumnWidthTweak::apply() {
-    if (m_applied || !m_mainWindow) {
+    if (applied_ || !main_window_) {
         return;
     }
 
-    for (const QString& name : std::as_const(m_tableNames)) {
-        auto* table = m_mainWindow->findChild<QTableView*>(name);
+    for (const QString& name : std::as_const(table_names_)) {
+        auto* table = main_window_->findChild<QTableView*>(name);
         if (table == nullptr) {
             qWarning() << "UI Tweaks: table not found:" << name;
             continue;
         }
-        m_tables.append(table);
+        tables_.append(table);
 
         table->installEventFilter(this);
 
         const QHeaderView* header = table->horizontalHeader();
-        m_connections.append(connect(header, &QHeaderView::sectionResized, this, [this](int logicalIndex) {
-            if (m_columns.contains(logicalIndex)) {
+        connections_.append(connect(header, &QHeaderView::sectionResized, this, [this](int logical_index) {
+            if (columns_.contains(logical_index)) {
                 scheduleEnforce();
             }
         }));
-        m_connections.append(
+        connections_.append(
             connect(header, &QHeaderView::sectionCountChanged, this, &IdColumnWidthTweak::scheduleEnforce));
     }
 
-    m_applied = true;
+    applied_ = true;
     enforce();
 }
 
 void IdColumnWidthTweak::revert() {
-    if (!m_applied) {
+    if (!applied_) {
         return;
     }
 
-    for (const QMetaObject::Connection& connection : std::as_const(m_connections)) {
+    for (const QMetaObject::Connection& connection : std::as_const(connections_)) {
         disconnect(connection);
     }
-    m_connections.clear();
+    connections_.clear();
 
-    for (const QPointer<QTableView>& table : std::as_const(m_tables)) {
+    for (const QPointer<QTableView>& table : std::as_const(tables_)) {
         if (table) {
             table->removeEventFilter(this);
         }
     }
-    m_tables.clear();
-    m_applied = false;
+    tables_.clear();
+    applied_ = false;
 }
 
 bool IdColumnWidthTweak::eventFilter(QObject* watched, QEvent* event) {
@@ -96,31 +96,31 @@ bool IdColumnWidthTweak::eventFilter(QObject* watched, QEvent* event) {
 
 void IdColumnWidthTweak::scheduleEnforce() {
     // Deferred so that it runs after the viewer is done changing the table.
-    if (m_enforcePending) {
+    if (enforce_pending_) {
         return;
     }
-    m_enforcePending = true;
+    enforce_pending_ = true;
     QTimer::singleShot(0, this, [this] {
-        m_enforcePending = false;
-        if (m_applied) {
+        enforce_pending_ = false;
+        if (applied_) {
             enforce();
         }
     });
 }
 
 void IdColumnWidthTweak::enforce() {
-    for (const QPointer<QTableView>& table : std::as_const(m_tables)) {
+    for (const QPointer<QTableView>& table : std::as_const(tables_)) {
         if (!table) {
             continue;
         }
         QHeaderView* header = table->horizontalHeader();
-        const int minWidth = minimumIdWidth(table);
-        for (int const column : std::as_const(m_columns)) {
+        const int min_width = minimumIdWidth(table);
+        for (int const column : std::as_const(columns_)) {
             if (column >= header->count() || header->isSectionHidden(column)) {
                 continue;
             }
-            if (header->sectionSize(column) < minWidth) {
-                header->resizeSection(column, minWidth);
+            if (header->sectionSize(column) < min_width) {
+                header->resizeSection(column, min_width);
             }
         }
     }

@@ -47,26 +47,26 @@ std::string parseOptions(std::span<char*> args, dlt_proxy::Options& options) {
             if (colon == 0 || !port) {
                 return "--source needs HOST:PORT, got " + std::string(value);
             }
-            options.sourceHost = value.substr(0, colon);
-            options.sourcePort = *port;
+            options.source_host = value.substr(0, colon);
+            options.source_port = *port;
         } else if (name == "--listen") {
             const auto port = toPort(value);
             if (!port) {
                 return "--listen needs a port, got " + std::string(value);
             }
-            options.listenPort = *port;
+            options.listen_port = *port;
         } else {
-            const auto appId = dlt_proxy::toId(value);
-            if (!appId) {
+            const auto app_id = dlt_proxy::toId(value);
+            if (!app_id) {
                 return "An app ID has 1 to 4 characters, got " + std::string(value);
             }
-            options.appIds.push_back(*appId);
+            options.app_ids.push_back(*app_id);
         }
     }
-    if (options.sourceHost.empty()) {
+    if (options.source_host.empty()) {
         return "Missing --source";
     }
-    if (options.listenPort == 0) {
+    if (options.listen_port == 0) {
         return "Missing --listen";
     }
     return {};

@@ -22,15 +22,15 @@ namespace plugin_utils {
  */
 class ControlPlugin : public QObject, public QDLTPluginInterface, public QDltPluginControlInterface {
  public:
-    explicit ControlPlugin(const PluginInfo& info) : m_info(info), m_settings(info.settingsGroup) {}
+    explicit ControlPlugin(const PluginInfo& info) : info_(info), settings_(info.settings_group) {}
 
-    QString name() final { return m_info.name; }
-    QString pluginVersion() final { return m_info.version; }
-    QString description() final { return m_info.description; }
+    QString name() final { return info_.name; }
+    QString pluginVersion() final { return info_.version; }
+    QString description() final { return info_.description; }
 
     /* QDLTPluginInterface */
     QString pluginInterfaceVersion() override { return {PLUGIN_INTERFACE_VERSION}; }
-    QString error() override { return m_error; }
+    QString error() override { return error_; }
     bool loadConfig(QString /*filename*/) override { return true; }
     bool saveConfig(QString /*filename*/) override { return true; }
     QStringList infoConfig() override { return {}; }
@@ -39,35 +39,35 @@ class ControlPlugin : public QObject, public QDLTPluginInterface, public QDltPlu
     bool initControl(QDltControl* /*control*/) override { return true; }
     bool initConnections(QStringList /*list*/) override { return true; }
     bool controlMsg(int /*index*/, QDltMsg& /*msg*/) override { return false; }
-    bool stateChanged(int /*index*/, QDltConnection::QDltConnectionState /*connectionState*/,
+    bool stateChanged(int /*index*/, QDltConnection::QDltConnectionState /*connection_state*/,
                       QString /*hostname*/) override {
         return true;
     }
     bool autoscrollStateChanged(bool /*enabled*/) override { return true; }
-    void initMessageDecoder(QDltMessageDecoder* /*messageDecoder*/) override {}
-    void initMainTableView(QTableView* pTableView) override;
+    void initMessageDecoder(QDltMessageDecoder* /*message_decoder*/) override {}
+    void initMainTableView(QTableView* p_table_view) override;
     void configurationChanged() override;
 
  protected:
     /* Called once, before the first onEnabledChanged() */
-    virtual void onMainWindowReady(QWidget* /*mainWindow*/) {}
+    virtual void onMainWindowReady(QWidget* /*main_window*/) {}
     /* Mode changes reach the plugin on Apply Configuration */
     virtual void onEnabledChanged(bool /*enabled*/) {}
 
-    [[nodiscard]] QWidget* mainWindow() const { return m_mainWindow; }
-    [[nodiscard]] bool isEnabled() const { return m_enabled; }
-    [[nodiscard]] const PluginSettings& settings() const { return m_settings; }
+    [[nodiscard]] QWidget* mainWindow() const { return main_window_; }
+    [[nodiscard]] bool isEnabled() const { return enabled_; }
+    [[nodiscard]] const PluginSettings& settings() const { return settings_; }
 
-    void setError(QString error) { m_error = std::move(error); }
+    void setError(QString error) { error_ = std::move(error); }
 
  private:
     void syncEnabled();
 
-    PluginInfo m_info;
-    PluginSettings m_settings;
-    QString m_error;
-    QPointer<QWidget> m_mainWindow;
-    bool m_enabled = false;
+    PluginInfo info_;
+    PluginSettings settings_;
+    QString error_;
+    QPointer<QWidget> main_window_;
+    bool enabled_ = false;
 };
 
 }  // namespace plugin_utils
