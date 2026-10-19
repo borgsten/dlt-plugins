@@ -11,6 +11,7 @@
 #include "plugin_utils/plugin_info.h"
 
 #include "tweaks/current_tab_tweak.h"
+#include "tweaks/filter_colors_tweak.h"
 #include "tweaks/hidden_widgets_tweak.h"
 #include "tweaks/id_column_width_tweak.h"
 #include "tweaks/recent_menus_tweak.h"
@@ -69,6 +70,7 @@ void UiTweaksPlugin::onMainWindowReady(QWidget* main_window) {
                                     QList<int>{FieldNames::AppId, FieldNames::ContextId});
     tweaks_.add<TextColorTweak>({.id = "textColor", .title = "Prefer dark text on filter colors"}, main_window,
                                 toStringList(kFilterColoredViews));
+    tweaks_.add<FilterColorsTweak>({.id = "filterColors", .title = "Soft filter color palette"}, main_window);
     tweaks_.add<CurrentTabTweak>({.id = "filterTab", .title = "Start on the Filter tab"}, main_window, u"tabWidget"_s,
                                  u"tabPFilter"_s);
     tweaks_.add<RecentMenusTweak>({.id = "recentMenus", .title = "Extend Recent menus"}, main_window);

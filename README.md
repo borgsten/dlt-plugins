@@ -115,6 +115,10 @@ Shared helpers for plugins, linked by `dlt_add_plugin()`:
   - Uses dark text on filter colors unless the color is dark: in the log
     table, search results, filter list and filter dialog preview. The
     brightness threshold is configurable.
+  - Replaces the filter dialog's harsh marker color presets with soft colors:
+    a row of 18 color families, and below it 7 shades of the chosen one.
+    Colors other filters already use are marked with a dot. Also keeps the
+    color preview's color while the dialog is not focused.
   - Starts on the Filter tab of the project panel.
 - `plugins/dltproxy`: runs the filter proxy inside the viewer, on its own
   thread, while the plugin is enabled. It connects to the source host and

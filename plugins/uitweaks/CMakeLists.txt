@@ -6,6 +6,8 @@ dlt_add_plugin(uitweaksplugin
     tweaks/itweak.h
     tweaks/current_tab_tweak.h
     tweaks/current_tab_tweak.cpp
+    tweaks/filter_colors_tweak.h
+    tweaks/filter_colors_tweak.cpp
     tweaks/hidden_widgets_tweak.h
     tweaks/hidden_widgets_tweak.cpp
     tweaks/id_column_width_tweak.h
