@@ -35,17 +35,6 @@ Built plugins end up in `<build dir>/out/plugins` (with just, also copied to
 Plugins path) or install them with `cmake --install build` (target directory:
 `DLT_PLUGIN_INSTALL_DIR`).
 
-## Layout
-
-```
-libs/plugin_utils/   shared helpers, linked into every plugin
-libs/dlt_proxy/      the DLT filter proxy, used by the tool and the dltproxy plugin
-plugins/<name>/      one directory per plugin
-cmake/               qdlt lookup and dlt_add_plugin()
-test/                test programs, e.g. a DLT log source for proxy testing
-tools/               standalone programs
-```
-
 ## Debug output
 
 Qt sends `qDebug()` output to the systemd journal when stderr is not a
@@ -78,65 +67,36 @@ constexpr plugin_utils::PluginInfo kInfo{
 MyPlugin::MyPlugin() : ControlPlugin(kInfo) {}
 ```
 
+For a settings dock, derive from `plugin_utils::ConfigurablePlugin` instead,
+fill the form in `buildSettingsForm()`, and also declare
+`Q_INTERFACES(QDltPluginViewerInterface)`; without it the viewer never asks for
+the dock.
+
 Use snake_case file names. Avoid names starting with `ui_`: AUTOUIC treats
 `ui_*.h` includes as headers generated from `.ui` files.
 
 ## plugin_utils
 
-Shared helpers for plugins, linked by `dlt_add_plugin()`:
-
-- `plugin_utils/plugin_info.h`: `PluginInfo`, the name, version and
-  description the viewer shows, and the plugin's settings group.
-- `plugin_utils/plugin_settings.h`: `PluginSettings`, the plugin's part of the
-  viewer's settings; every key goes under the plugin's settings group.
-  `ControlPlugin::settings()` returns it. Viewer settings are only reachable
-  explicitly through `QDltSettingsManager`.
-- `plugin_utils/settings_form.h`: `SettingsForm`, a panel of checkboxes and
-  spin boxes bound to `PluginSettings` keys, in titled or checkable group
-  boxes whose keys can go in a settings subgroup.
-- `plugin_utils/configurable_plugin.h`: `ConfigurablePlugin`, a
-  `ControlPlugin` with a settings dock: it implements the viewer plugin
-  interface, and the plugin fills a `SettingsForm` in `buildSettingsForm()`.
-  The plugin also declares `Q_INTERFACES(QDltPluginViewerInterface)`.
-- `plugin_utils/control_plugin.h`: `ControlPlugin`, a base for control
-  plugins that act on the main window. Provides defaults for the plugin
-  interfaces and calls `onMainWindowReady()` once at startup and
-  `onEnabledChanged()` whenever the plugin becomes enabled or disabled.
+Shared helpers linked into every plugin: plugin metadata and settings, a base
+class for plugins that act on the main window, and one that adds a settings
+dock built from a form of checkboxes, spin boxes, text fields and combo boxes
+bound to the plugin's settings.
 
 ## Plugins
 
-- `plugins/uitweaks`: small changes to the viewer's UI. Each tweak can be
-  turned off, and its options set, in the plugin's dock (plugin mode Show).
-  Active only while the plugin is enabled and plugins are globally enabled;
-  mode changes apply on Apply Configuration.
-  - Hides the filter index range and the filter append widgets.
-  - Keeps the app and context ID columns wide enough for their IDs.
-  - Sizes the payload column to fill the rest of the table width, also when
-    the window or the other columns change, until it is resized by hand.
-  - Extends the Recent files/projects/filters menus (10 entries by default).
-  - Uses dark text on filter colors unless the color is dark: in the log
-    table, search results, filter list and filter dialog preview. The
-    brightness threshold is configurable.
-  - Replaces the filter dialog's harsh marker color presets with soft colors:
-    a row of 18 color families, and below it 7 shades of the chosen one.
-    Colors other filters already use are marked with a dot. The colors and the
-    preview dim while the marker color is off, and the preview keeps its
-    color while the dialog is not focused.
-  - Starts on the Filter tab of the project panel.
-  - Temporary: lets the filter dialog's Type box grow to fit its buttons,
-    which its fixed maximum height clips, until the viewer fixes this.
-- `plugins/dltproxy`: runs the filter proxy inside the viewer, on its own
-  thread, while the plugin is enabled. It connects to the source host and
-  port, and once connected listens on the listen port and forwards the
-  messages with the configured app IDs (all if empty). Until the first
-  client connects, it keeps what it forwards (up to 16 MB). Configure an ECU
-  in the project with `localhost` and the listen port: the viewer retries the
-  connection every second, so it connects once the proxy listens. Settings
-  are in the plugin's dock (plugin mode Show); changes restart the proxy.
+- `plugins/uitweaks`: small UI fixes, each can be turned off in its dock
+  - hide the filter index range and filter append widgets
+  - keep the app and context ID columns wide enough
+  - fit the payload column to the table width
+  - more entries in the Recent menus
+  - dark text on filter colors
+  - soft marker color palette with shades in the filter dialog
+  - start on the Filter tab
+  - unclip the filter dialog's type buttons (temporary, until fixed upstream)
+- `plugins/dltproxy`: forwards selected app IDs from a DLT source to a local
+  port, for an ECU in the project to connect to
 
 ## Tools
 
-- `tools/dlt-filter-proxy`: the same proxy as a program, e.g.
-  `dlt-filter-proxy --source localhost:3490 --listen 9999 --appid NAV
-  --appid MED`. Builds on its own too:
-  `cmake -S tools/dlt-filter-proxy -B build/proxy`.
+- `tools/dlt-filter-proxy`: the proxy as a standalone program; also builds on
+  its own with `cmake -S tools/dlt-filter-proxy -B build/proxy`
