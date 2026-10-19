@@ -118,13 +118,37 @@ constexpr std::size_t kBaseShade = 3;
 
 constexpr QSize kSwatchSize(20, 18);
 constexpr int kSwatchSpacing = 3;
+constexpr int kDisabledAlpha = 90;
+constexpr float kMaxAlpha = 255;
 constexpr int kSectionSpacing = 8;
 
 QString presetName(int index) { return u"pushButton_c%1"_s.arg(index); }
 
+// Disabled colors let the window show through, dimming them on light and dark themes.
+QColor dimmed(QColor color) {
+    color.setAlpha(kDisabledAlpha);
+    return color;
+}
+
+// What dimmed() looks like over the window, for colors that are not blended.
+QColor dimmedOver(const QColor& color, const QColor& window) {
+    const float opacity = static_cast<float>(kDisabledAlpha) / kMaxAlpha;
+    const auto mix = [opacity](float channel, float window_channel) {
+        return (channel * opacity) + (window_channel * (1 - opacity));
+    };
+    return QColor::fromRgbF(mix(color.redF(), window.redF()), mix(color.greenF(), window.greenF()),
+                            mix(color.blueF(), window.blueF()));
+}
+
 QString swatchStyle(const QColor& color) {
+    const QColor dim = dimmed(color);
     return u"QPushButton { background-color: %1; border: 1px solid rgba(0, 0, 0, 60); border-radius: 3px; }"
-           u" QPushButton:disabled { background-color: rgb(255, 255, 255); }"_s.arg(color.name());
+           u" QPushButton:disabled { background-color: rgba(%2, %3, %4, %5); border-color: rgba(0, 0, 0, 25); }"_s
+               .arg(color.name())
+               .arg(dim.red())
+               .arg(dim.green())
+               .arg(dim.blue())
+               .arg(dim.alpha());
 }
 
 QSet<QRgb> usedColors(const QWidget* main_window) {
@@ -167,15 +191,27 @@ std::unique_ptr<QPushButton> createSwatch(const QWidget* dialog, const QColor& c
     return swatch;
 }
 
-// The viewer sets the preview's inactive background to white, so the picked
-// color disappears whenever the dialog loses focus.
-void keepPreviewColorWhenInactive(QWidget* preview) {
+// The viewer sets the preview's inactive and disabled backgrounds to white, so
+// the picked color disappears whenever the dialog loses focus, and glares
+// while the marker color is off. Disabled, the preview is dimmed as a whole,
+// text included, so its text does not change color when toggled.
+void syncPreviewColor(QWidget* preview) {
     QPalette palette = preview->palette();
-    const QColor color = palette.color(QPalette::Active, preview->backgroundRole());
-    if (palette.color(QPalette::Inactive, preview->backgroundRole()) == color) {
+    const QPalette::ColorRole background = preview->backgroundRole();
+    const QPalette::ColorRole text = preview->foregroundRole();
+    const QColor color = palette.color(QPalette::Active, background);
+    // Widgets fill their background without blending, so mix with the window here.
+    const QColor window = preview->parentWidget()->palette().color(QPalette::Active, QPalette::Window);
+    const QColor disabled_background = dimmedOver(color, window);
+    const QColor disabled_text = dimmedOver(palette.color(QPalette::Active, text), window);
+    if (palette.color(QPalette::Inactive, background) == color &&
+        palette.color(QPalette::Disabled, background) == disabled_background &&
+        palette.color(QPalette::Disabled, text) == disabled_text) {
         return;
     }
-    palette.setColor(QPalette::Inactive, preview->backgroundRole(), color);
+    palette.setColor(QPalette::Inactive, background, color);
+    palette.setColor(QPalette::Disabled, background, disabled_background);
+    palette.setColor(QPalette::Disabled, text, disabled_text);
     // Triggers another PaletteChange, which then finds the color already set.
     preview->setPalette(palette);
 }
@@ -283,7 +319,7 @@ bool FilterColorsTweak::eventFilter(QObject* watched, QEvent* event) {
     } else if (event->type() == QEvent::PaletteChange && watched->objectName() == kColorPreviewName) {
         auto* preview = qobject_cast<QWidget*>(watched);
         if (preview != nullptr && preview->window()->inherits(kFilterDialogClass)) {
-            keepPreviewColorWhenInactive(preview);
+            syncPreviewColor(preview);
         }
     }
     return false;
@@ -298,7 +334,7 @@ void FilterColorsTweak::extendDialog(QWidget* dialog) const {
         qWarning() << "UI Tweaks: filter dialog color widgets not found";
         return;
     }
-    keepPreviewColorWhenInactive(preview);
+    syncPreviewColor(preview);
 
     // The presets stay in the hidden color row; selectColor() clicks one.
     color_row->hide();

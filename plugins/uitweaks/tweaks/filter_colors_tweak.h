@@ -11,7 +11,7 @@
  * Replaces the filter dialog's harsh marker color presets with soft colors:
  * a row of hue families and the shades of the chosen one, with the colors
  * other filters already use marked. Also keeps the color preview's color
- * while the dialog is inactive.
+ * while the dialog is inactive, and dims it, like the colors, while disabled.
  */
 class FilterColorsTweak : public QObject, public ITweak {
     Q_OBJECT

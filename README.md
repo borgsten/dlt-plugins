@@ -119,8 +119,9 @@ Shared helpers for plugins, linked by `dlt_add_plugin()`:
     brightness threshold is configurable.
   - Replaces the filter dialog's harsh marker color presets with soft colors:
     a row of 18 color families, and below it 7 shades of the chosen one.
-    Colors other filters already use are marked with a dot. Also keeps the
-    color preview's color while the dialog is not focused.
+    Colors other filters already use are marked with a dot. The colors and the
+    preview dim while the marker color is off, and the preview keeps its
+    color while the dialog is not focused.
   - Starts on the Filter tab of the project panel.
   - Temporary: lets the filter dialog's Type box grow to fit its buttons,
     which its fixed maximum height clips, until the viewer fixes this.
