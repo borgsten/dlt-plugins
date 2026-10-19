@@ -12,21 +12,11 @@ void CurrentTabTweak::apply() {
     if (!main_window_) {
         return;
     }
-    tab_widget_ = main_window_->findChild<QTabWidget*>(tab_widget_name_);
-    auto* tab = tab_widget_ ? tab_widget_->findChild<QWidget*>(tab_name_) : nullptr;
-    if (tab == nullptr || tab_widget_->indexOf(tab) < 0) {
+    auto* tab_widget = main_window_->findChild<QTabWidget*>(tab_widget_name_);
+    auto* tab = (tab_widget != nullptr) ? tab_widget->findChild<QWidget*>(tab_name_) : nullptr;
+    if (tab == nullptr || tab_widget->indexOf(tab) < 0) {
         qWarning() << "UI Tweaks: tab not found:" << tab_widget_name_ << tab_name_;
         return;
     }
-    previous_tab_ = tab_widget_->currentWidget();
-    tab_widget_->setCurrentWidget(tab);
-}
-
-void CurrentTabTweak::revert() {
-    // Leave a tab the user has switched to since.
-    const QWidget* current = tab_widget_ ? tab_widget_->currentWidget() : nullptr;
-    if (current != nullptr && previous_tab_ && current->objectName() == tab_name_) {
-        tab_widget_->setCurrentWidget(previous_tab_);
-    }
-    previous_tab_.clear();
+    tab_widget->setCurrentWidget(tab);
 }

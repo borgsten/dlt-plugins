@@ -13,13 +13,11 @@ class CurrentTabTweak : public ITweak {
     CurrentTabTweak(QWidget* main_window, QString tab_widget_name, QString tab_name);
 
     void apply() override;
-    void revert() override;
+    void revert() override {};
     void buildSettings(plugin_utils::SettingsForm& /*form*/) override {}
 
  private:
     QPointer<QWidget> main_window_;
     QString tab_widget_name_;
     QString tab_name_;
-    QPointer<QTabWidget> tab_widget_;
-    QPointer<QWidget> previous_tab_;
 };
