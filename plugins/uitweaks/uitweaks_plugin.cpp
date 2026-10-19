@@ -14,6 +14,7 @@
 #include "tweaks/filter_colors_tweak.h"
 #include "tweaks/hidden_widgets_tweak.h"
 #include "tweaks/id_column_width_tweak.h"
+#include "tweaks/payload_column_tweak.h"
 #include "tweaks/recent_menus_tweak.h"
 #include "tweaks/text_color_tweak.h"
 
@@ -68,6 +69,8 @@ void UiTweaksPlugin::onMainWindowReady(QWidget* main_window) {
     tweaks_.add<IdColumnWidthTweak>({.id = "idColumnWidth", .title = "Keep app and context ID columns wide enough"},
                                     main_window, toStringList(kLogTables),
                                     QList<int>{FieldNames::AppId, FieldNames::ContextId});
+    tweaks_.add<PayloadColumnTweak>({.id = "payloadFit", .title = "Fit the payload column to the table width"},
+                                    main_window, toStringList(kLogTables), FieldNames::Payload);
     tweaks_.add<TextColorTweak>({.id = "textColor", .title = "Prefer dark text on filter colors"}, main_window,
                                 toStringList(kFilterColoredViews));
     tweaks_.add<FilterColorsTweak>({.id = "filterColors", .title = "Soft filter color palette"}, main_window);

@@ -111,6 +111,8 @@ Shared helpers for plugins, linked by `dlt_add_plugin()`:
   mode changes apply on Apply Configuration.
   - Hides the filter index range and the filter append widgets.
   - Keeps the app and context ID columns wide enough for their IDs.
+  - Sizes the payload column to fill the rest of the table width, also when
+    the window or the other columns change, until it is resized by hand.
   - Extends the Recent files/projects/filters menus (10 entries by default).
   - Uses dark text on filter colors unless the color is dark: in the log
     table, search results, filter list and filter dialog preview. The
