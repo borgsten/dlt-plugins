@@ -42,6 +42,7 @@ libs/plugin_utils/   shared helpers, linked into every plugin
 libs/dlt_proxy/      the DLT filter proxy, used by the tool and the dltproxy plugin
 plugins/<name>/      one directory per plugin
 cmake/               qdlt lookup and dlt_add_plugin()
+test/                test programs, e.g. a DLT log source for proxy testing
 tools/               standalone programs
 ```
 
