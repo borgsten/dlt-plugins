@@ -25,10 +25,16 @@ constexpr plugin_utils::PluginInfo kInfo{
     .settings_group = "uitweaks"_L1,
 };
 
-constexpr std::array kHiddenWidgets{
+constexpr std::array kHiddenFilterRangeWidgets{
     "checkBoxFilterRange"_L1,
     "lineEditFilterStart"_L1,
     "lineEditFilterEnd"_L1,
+};
+
+constexpr std::array kHiddenFilterAppendWidgets{
+    "comboBoxFilterSelection"_L1,
+    "pushButtonDefaultFilterUpdateCache"_L1,
+    "checkBoxAppendDefaultFilter"_L1,
 };
 
 constexpr std::array kLogTables{
@@ -46,8 +52,10 @@ QStringList toStringList(const std::array<QLatin1StringView, N>& names) {
 UiTweaksPlugin::UiTweaksPlugin() : ConfigurablePlugin(kInfo), tweaks_(settings()) {}
 
 void UiTweaksPlugin::onMainWindowReady(QWidget* main_window) {
-    tweaks_.add<HiddenWidgetsTweak>({.id = "hiddenWidgets", .title = "Hide the filter index range"}, main_window,
-                                    toStringList(kHiddenWidgets));
+    tweaks_.add<HiddenWidgetsTweak>({.id = "hiddenFilterRangeWidgets", .title = "Hide the filter index range"},
+                                    main_window, toStringList(kHiddenFilterRangeWidgets));
+    tweaks_.add<HiddenWidgetsTweak>({.id = "hiddenFilterAppendWidgets", .title = "Hide the filter append widgets"},
+                                    main_window, toStringList(kHiddenFilterAppendWidgets));
     tweaks_.add<IdColumnWidthTweak>({.id = "idColumnWidth", .title = "Keep app and context ID columns wide enough"},
                                     main_window, toStringList(kLogTables),
                                     QList<int>{FieldNames::AppId, FieldNames::ContextId});
