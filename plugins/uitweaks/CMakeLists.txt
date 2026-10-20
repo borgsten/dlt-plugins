@@ -20,6 +20,8 @@ dlt_add_plugin(uitweaksplugin
     tweaks/recent_menu.cpp
     tweaks/recent_menus_tweak.h
     tweaks/recent_menus_tweak.cpp
+    tweaks/search_hits_tweak.h
+    tweaks/search_hits_tweak.cpp
     tweaks/text_color_tweak.h
     tweaks/text_color_tweak.cpp
 )
