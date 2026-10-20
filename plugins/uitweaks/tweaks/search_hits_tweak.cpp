@@ -24,11 +24,13 @@ using namespace Qt::StringLiterals;
 
 namespace {
 
-const auto kColorKey = u"color"_s;
-const auto kDefaultColor = u"#ffb300"_s;
-const auto kOpacityKey = u"opacity"_s;
-constexpr int kDefaultOpacity = 30;
-constexpr int kMaxOpacity = 100;
+const plugin_utils::ColorField kColorField{
+    .key = u"color"_s,
+    .opacity_key = u"opacity"_s,
+    .label = u"Color"_s,
+    .default_value = u"#ffb300"_s,
+    .default_opacity = 30,
+};
 
 constexpr auto kSearchDialogClass = "CSearchDialog";
 
@@ -127,8 +129,8 @@ void SearchHitsTweak::attach() {
     log_view_ = log_view;
     previous_delegate_ = log_view->itemDelegate();
     // The view owns the delegate through its parent.
-    auto delegate = std::make_unique<SearchHitsDelegate>(
-        previous_delegate_, index_column_, color().value_or(withOpacity(QColor::fromString(kDefaultColor))), log_view);
+    auto delegate = std::make_unique<SearchHitsDelegate>(previous_delegate_, index_column_,
+                                                         plugin_utils::colorValue(settings_, kColorField), log_view);
     delegate_ = delegate.get();
     log_view->setItemDelegate(delegate.release());
 
@@ -179,23 +181,12 @@ void SearchHitsTweak::revert() {
 }
 
 void SearchHitsTweak::buildSettings(plugin_utils::SettingsForm& form) {
-    form.addLineEdit(
-        {
-            .key = kColorKey,
-            .label = "Color",
-            .default_value = kDefaultColor,
-            .placeholder = kDefaultColor,
-        },
-        [this](const QString& /*name*/) { updateColor(); });
-    form.addSpinBox(
-        {
-            .key = kOpacityKey,
-            .label = "Opacity (%)",
-            .default_value = kDefaultOpacity,
-            .minimum = 0,
-            .maximum = kMaxOpacity,
-        },
-        [this](int /*opacity*/) { updateColor(); });
+    form.addColorPicker(kColorField, [this](const QColor& color) {
+        if (delegate_ && log_view_) {
+            delegate_->setColor(color);
+            log_view_->viewport()->update();
+        }
+    });
 }
 
 void SearchHitsTweak::onSearchProgressChanged(bool in_progress) {
@@ -203,29 +194,6 @@ void SearchHitsTweak::onSearchProgressChanged(bool in_progress) {
     if (!in_progress) {
         rebuildHits();
     }
-}
-
-std::optional<QColor> SearchHitsTweak::color() const {
-    const QColor color = QColor::fromString(settings_.value(kColorKey, kDefaultColor));
-    if (!color.isValid()) {
-        return std::nullopt;
-    }
-    return withOpacity(color);
-}
-
-QColor SearchHitsTweak::withOpacity(QColor color) const {
-    color.setAlphaF(static_cast<float>(settings_.value(kOpacityKey, kDefaultOpacity)) / kMaxOpacity);
-    return color;
-}
-
-void SearchHitsTweak::updateColor() {
-    // Ignores what is typed until it is a color.
-    const std::optional<QColor> new_color = color();
-    if (!new_color || !delegate_ || !log_view_) {
-        return;
-    }
-    delegate_->setColor(*new_color);
-    log_view_->viewport()->update();
 }
 
 void SearchHitsTweak::rebuildHits() {

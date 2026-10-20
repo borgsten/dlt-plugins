@@ -1,11 +1,8 @@
 #pragma once
 
-#include <optional>
-
 #include <QAbstractItemDelegate>
 #include <QAbstractItemModel>
 #include <QAbstractItemView>
-#include <QColor>
 #include <QList>
 #include <QMetaObject>
 #include <QObject>
@@ -41,10 +38,6 @@ class SearchHitsTweak : public QObject, public ITweak {
     void attach();
     // A slot, since the search dialog's class is not available to connect to.
     Q_SLOT void onSearchProgressChanged(bool in_progress);
-    /* The configured color with its opacity, if the color is valid */
-    [[nodiscard]] std::optional<QColor> color() const;
-    [[nodiscard]] QColor withOpacity(QColor color) const;
-    void updateColor();
     void rebuildHits();
 
     plugin_utils::PluginSettings settings_;

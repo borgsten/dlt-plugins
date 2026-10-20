@@ -1,13 +1,24 @@
 #include "plugin_utils/settings_form.h"
 
+#include <memory>
 #include <utility>
 
 #include <QCheckBox>
+#include <QColorDialog>
 #include <QComboBox>
+#include <QHBoxLayout>
+#include <QIcon>
 #include <QLineEdit>
 #include <QMargins>
+#include <QPixmap>
+#include <QPushButton>
+#include <QSignalBlocker>
+#include <QSize>
 #include <QSpinBox>
 #include <QVBoxLayout>
+#include <QtMath>
+
+using namespace Qt::StringLiterals;
 
 namespace plugin_utils {
 
@@ -23,7 +34,25 @@ auto storeAndNotify(const PluginSettings& settings, QString key, std::function<v
     };
 }
 
+constexpr QSize kSwatchSize{24, 16};
+
+QIcon swatch(const QColor& color) {
+    QPixmap pixmap(kSwatchSize);
+    // Opaque, so the color reads the same on any button background.
+    pixmap.fill(QColor(color.rgb()));
+    return {pixmap};
+}
+
 }  // namespace
+
+QColor colorValue(const PluginSettings& settings, const ColorField& field) {
+    QColor color = QColor::fromString(settings.value(field.key, field.default_value));
+    if (!color.isValid()) {
+        color = QColor::fromString(field.default_value);
+    }
+    color.setAlphaF(static_cast<float>(settings.value(field.opacity_key, field.default_opacity)) / kMaxOpacity);
+    return color;
+}
 
 SettingsForm::SettingsForm(PluginSettings settings, QWidget* parent)
     : QWidget(parent), settings_(std::move(settings)) {}
@@ -57,6 +86,52 @@ void SettingsForm::addLineEdit(const LineEditField& field, std::function<void(QS
                 }
             });
     layout_.addRow(field.label, line_edit.release());
+}
+
+void SettingsForm::addColorPicker(const ColorField& field, std::function<void(QColor)> on_changed) {
+    auto row = std::make_unique<QWidget>();
+    auto* row_layout = std::make_unique<QHBoxLayout>(row.get()).release();
+    row_layout->setContentsMargins(QMargins());
+
+    const QColor color = colorValue(settings_, field);
+    auto button = std::make_unique<QPushButton>(swatch(color), color.name());
+    auto opacity = std::make_unique<QSpinBox>();
+    opacity->setRange(0, kMaxOpacity);
+    opacity->setSuffix(u" %"_s);
+    opacity->setValue(settings_.value(field.opacity_key, field.default_opacity));
+    // Don't report every typed digit.
+    opacity->setKeyboardTracking(false);
+
+    const auto notify = [settings = settings_, field, on_changed = std::move(on_changed)] {
+        if (on_changed) {
+            on_changed(colorValue(settings, field));
+        }
+    };
+    connect(opacity.get(), &QSpinBox::valueChanged, this, [settings = settings_, field, notify](int value) {
+        settings.setValue(field.opacity_key, value);
+        notify();
+    });
+    connect(button.get(), &QPushButton::clicked, this,
+            [settings = settings_, field, notify, button = button.get(), opacity = opacity.get()] {
+                const QColor picked = QColorDialog::getColor(colorValue(settings, field), button, field.label,
+                                                             QColorDialog::ShowAlphaChannel);
+                if (!picked.isValid()) {
+                    return;
+                }
+                settings.setValue(field.key, picked.name());
+                settings.setValue(field.opacity_key, qRound(picked.alphaF() * kMaxOpacity));
+                button->setIcon(swatch(picked));
+                button->setText(picked.name());
+                // Already stored, and reported once below.
+                const QSignalBlocker blocker(opacity);
+                opacity->setValue(qRound(picked.alphaF() * kMaxOpacity));
+                notify();
+            });
+
+    row_layout->addWidget(button.release());
+    row_layout->addWidget(opacity.release());
+    row_layout->addStretch();
+    layout_.addRow(field.label, row.release());
 }
 
 void SettingsForm::addComboBox(const ComboBoxField& field, std::function<void(QString)> on_changed) {

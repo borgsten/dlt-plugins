@@ -4,6 +4,7 @@
 #include <limits>
 #include <memory>
 
+#include <QColor>
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QList>
@@ -39,6 +40,20 @@ struct CheckableGroupField {
     QString settings_group = {};
 };
 
+inline constexpr int kMaxOpacity = 100;
+
+/* A color, as #rrggbb, and its opacity in percent, under two keys */
+struct ColorField {
+    QString key;
+    QString opacity_key;
+    QString label;
+    QString default_value;
+    int default_opacity = kMaxOpacity;
+};
+
+/* The color a ColorField stores, with its opacity as alpha */
+[[nodiscard]] QColor colorValue(const PluginSettings& settings, const ColorField& field);
+
 struct GroupField {
     QString title;
     QString settings_group = {};
@@ -70,6 +85,11 @@ class SettingsForm : public QWidget {
     void addCheckBox(const CheckBoxField& field, std::function<void(bool)> on_changed = {});
     void addSpinBox(const SpinBoxField& field, std::function<void(int)> on_changed = {});
     void addLineEdit(const LineEditField& field, std::function<void(QString)> on_changed = {});
+    /*
+     * A button that opens a color dialog with the color and opacity, next to
+     * a spin box for the opacity alone; on_changed gets both as one color.
+     */
+    void addColorPicker(const ColorField& field, std::function<void(QColor)> on_changed = {});
     /* Stores the chosen Choice::value */
     void addComboBox(const ComboBoxField& field, std::function<void(QString)> on_changed = {});
     SettingsForm& addGroup(const GroupField& field);
