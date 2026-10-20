@@ -10,6 +10,7 @@
 #include <QColor>
 #include <QDebug>
 #include <QFrame>
+#include <QGridLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLatin1StringView>
@@ -121,6 +122,9 @@ constexpr int kSwatchSpacing = 3;
 constexpr int kDisabledAlpha = 90;
 constexpr float kMaxAlpha = 255;
 constexpr int kSectionSpacing = 8;
+
+// pushButton_c0 to pushButton_c10
+constexpr int kPresetCount = 11;
 
 QString presetName(int index) { return u"pushButton_c%1"_s.arg(index); }
 
@@ -289,6 +293,39 @@ class ShadesChooser : public QWidget {
     QHBoxLayout shades_layout_{&shades_row_};
 };
 
+// The presets, columns 1 to 11 of the group box's grid, stay hidden;
+// selectColor() clicks one. The chooser takes their place.
+void extendColorGrid(const QWidget& dialog, QGridLayout& colors, std::unique_ptr<QWidget> chooser) {
+    for (int i = 0; i < kPresetCount; ++i) {
+        if (auto* preset = dialog.findChild<QWidget*>(presetName(i))) {
+            preset->hide();
+        }
+    }
+    colors.setHorizontalSpacing(kSectionSpacing);
+    colors.addWidget(chooser.release(), 0, 1);
+}
+
+// Before the viewer's layout fix (upstream, not yet released) the group box
+// has a fixed size and places the color row by hand. The presets stay in the
+// hidden row.
+bool extendLegacyColorRow(const QWidget& dialog, QGroupBox& group, QWidget& preview, QPushButton& pick,
+                          std::unique_ptr<QWidget> chooser) {
+    auto* color_row = dialog.findChild<QWidget*>(u"gridLayoutWidget_2"_s);
+    if (color_row == nullptr) {
+        return false;
+    }
+    color_row->hide();
+    auto row = std::make_unique<QHBoxLayout>();
+    row->setSpacing(kSectionSpacing);
+    row->addWidget(&preview);
+    row->addWidget(chooser.release());
+    row->addWidget(&pick);
+    row->addStretch();
+    group.setMaximumHeight(QWIDGETSIZE_MAX);
+    group.setLayout(row.release());
+    return true;
+}
+
 }  // namespace
 
 FilterColorsTweak::FilterColorsTweak(QWidget* main_window) : main_window_(main_window) {}
@@ -327,30 +364,30 @@ bool FilterColorsTweak::eventFilter(QObject* watched, QEvent* event) {
 
 void FilterColorsTweak::extendDialog(QWidget* dialog) const {
     auto* group = dialog->findChild<QGroupBox*>(u"groupBox_marker"_s);
-    auto* color_row = dialog->findChild<QWidget*>(u"gridLayoutWidget_2"_s);
     auto* preview = dialog->findChild<QWidget*>(kColorPreviewName);
     auto* pick = dialog->findChild<QPushButton*>(u"buttonSelectColor"_s);
-    if (group == nullptr || color_row == nullptr || preview == nullptr || pick == nullptr || !main_window_) {
+    if (group == nullptr || preview == nullptr || pick == nullptr || !main_window_) {
         qWarning() << "UI Tweaks: filter dialog color widgets not found";
         return;
     }
     syncPreviewColor(preview);
 
-    // The presets stay in the hidden color row; selectColor() clicks one.
-    color_row->hide();
-    auto row = std::make_unique<QHBoxLayout>();
-    row->setSpacing(kSectionSpacing);
-    row->addWidget(preview);
-    row->addWidget(createSeparator().release());
-    row->addWidget(std::make_unique<ShadesChooser>(dialog, usedColors(main_window_)).release());
-    row->addWidget(createSeparator().release());
-    row->addWidget(pick);
-    row->addStretch();
+    auto chooser = std::make_unique<QWidget>();
+    auto* chooser_layout = std::make_unique<QHBoxLayout>(chooser.get()).release();
+    chooser_layout->setContentsMargins(0, 0, 0, 0);
+    chooser_layout->setSpacing(kSectionSpacing);
+    chooser_layout->addWidget(createSeparator().release());
+    chooser_layout->addWidget(std::make_unique<ShadesChooser>(dialog, usedColors(main_window_)).release());
+    chooser_layout->addWidget(createSeparator().release());
 
-    // The group box has a fixed size and places the color row by hand; an
-    // explicit minimum size would also hide its layout's from the dialog.
+    // The explicit minimum size from the viewer hides the layout's, which then
+    // gets squeezed.
     group->setMinimumSize(0, 0);
-    group->setMaximumHeight(QWIDGETSIZE_MAX);
-    group->setLayout(row.release());
+    if (auto* colors = qobject_cast<QGridLayout*>(group->layout())) {
+        extendColorGrid(*dialog, *colors, std::move(chooser));
+    } else if (!extendLegacyColorRow(*dialog, *group, *preview, *pick, std::move(chooser))) {
+        qWarning() << "UI Tweaks: filter dialog color row not found";
+        return;
+    }
     dialog->adjustSize();
 }
