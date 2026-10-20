@@ -19,6 +19,11 @@ function(dlt_add_plugin NAME)
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         target_compile_options(${NAME} PRIVATE -Wall -Wextra)
     endif()
+    # Qt and qdlt pull in libraries (e.g. OpenGL) for their headers only;
+    # record just the ones the plugin uses.
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        target_link_options(${NAME} PRIVATE "LINKER:--as-needed")
+    endif()
 
     install(TARGETS ${NAME}
         LIBRARY DESTINATION "${DLT_PLUGIN_INSTALL_DIR}"

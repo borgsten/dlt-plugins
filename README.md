@@ -33,7 +33,8 @@ version (detected from `libqdlt`). qdlt is located in this order:
 Built plugins end up in `<build dir>/out/plugins` (with just, also copied to
 `build/plugins`). Either point the viewer at that directory (Settings →
 Plugins path) or install them with `cmake --install build` (target directory:
-`DLT_PLUGIN_INSTALL_DIR`).
+`DLT_PLUGIN_INSTALL_DIR`, by default `<prefix>/lib/dlt-viewer/plugins`) and
+point the viewer there; system plugin directories belong to the package.
 
 ## Debug output
 
