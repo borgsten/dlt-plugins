@@ -1,13 +1,12 @@
 #include "tweaks/payload_column_tweak.h"
 
+#include <algorithm>
 #include <utility>
 
 #include <QDebug>
 #include <QGuiApplication>
 #include <QHeaderView>
 #include <QTimer>
-#include <QtLogging>
-#include <QtMinMax>
 
 PayloadColumnTweak::PayloadColumnTweak(QWidget* main_window, QStringList table_names, int column)
     : main_window_(main_window), table_names_(std::move(table_names)), column_(column) {}
@@ -103,7 +102,7 @@ void PayloadColumnTweak::fit(Table& table) {
         return;
     }
     const int others = header->length() - header->sectionSize(column_);
-    const int width = qMax(header->minimumSectionSize(), table.view->viewport()->width() - others);
+    const int width = std::max(header->minimumSectionSize(), table.view->viewport()->width() - others);
     if (width == header->sectionSize(column_)) {
         return;
     }

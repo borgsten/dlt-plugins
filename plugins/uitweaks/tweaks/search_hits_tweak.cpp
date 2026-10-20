@@ -18,7 +18,8 @@
 #include <QStyledItemDelegate>
 #include <QTimer>
 #include <QVariant>
-#include <QtLogging>
+
+#include "plugin_utils/qt_compat.h"
 
 using namespace Qt::StringLiterals;
 

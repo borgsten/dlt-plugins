@@ -1,6 +1,6 @@
 #pragma once
 
-#include <QLatin1StringView>
+#include "plugin_utils/qt_compat.h"
 
 namespace plugin_utils {
 

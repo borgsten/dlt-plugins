@@ -3,6 +3,8 @@
 #include <array>
 #include <utility>
 
+#include "plugin_utils/qt_compat.h"
+
 using namespace Qt::StringLiterals;
 
 namespace {

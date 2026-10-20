@@ -5,14 +5,14 @@
 #include <utility>
 
 #include <QCoreApplication>
-#include <QLatin1StringView>
+#include <QDebug>
 #include <QRegularExpression>
 #include <QString>
 #include <QStringList>
-#include <QtLogging>
 
 #include "plugin_utils/plugin_info.h"
 #include "plugin_utils/plugin_settings.h"
+#include "plugin_utils/qt_compat.h"
 
 using namespace Qt::StringLiterals;
 
