@@ -1,7 +1,9 @@
 name: Build
 
 on:
+  # Branches get their runs from pull requests.
   push:
+    branches: [master]
   pull_request:
   # dlt-viewer master moves on its own; catch it breaking the plugins.
   schedule:
