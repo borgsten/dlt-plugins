@@ -1,0 +1,71 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  # dlt-viewer master moves on its own; catch it breaking the plugins.
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+    inputs:
+      dlt-viewer-ref:
+        description: dlt-viewer branch, tag or commit to build against
+        default: master
+
+jobs:
+  build:
+    name: Ubuntu ${{ matrix.ubuntu }}, Qt ${{ matrix.qt }}
+    runs-on: ubuntu-latest
+    container: ubuntu:${{ matrix.ubuntu }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # 24.04 has the oldest Qt 6 (6.4) and GCC 13, 26.04 the newest and CMake 4.
+        ubuntu: ["24.04", "26.04"]
+        qt: [5, 6]
+        include:
+          - qt: 5
+            packages: qtbase5-dev libqt5serialport5-dev
+            # dlt-viewer takes Qt 6 when it finds it.
+            viewer-args: -DCMAKE_DISABLE_FIND_PACKAGE_Qt6=ON
+          - qt: 6
+            packages: qt6-base-dev qt6-serialport-dev
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            git ca-certificates g++ cmake ninja-build pkgconf ${{ matrix.packages }}
+
+      - uses: actions/checkout@v7
+
+      - name: Check out dlt-viewer
+        id: viewer
+        uses: actions/checkout@v7
+        with:
+          repository: COVESA/dlt-viewer
+          ref: ${{ inputs.dlt-viewer-ref || 'master' }}
+          path: dlt-viewer
+
+      - name: Cache libqdlt
+        id: cache
+        uses: actions/cache@v6
+        with:
+          path: dlt-viewer-build
+          key: qdlt-ubuntu${{ matrix.ubuntu }}-qt${{ matrix.qt }}-${{ steps.viewer.outputs.commit }}
+
+      # The plugins only need libqdlt, not the viewer itself.
+      - name: Build libqdlt
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          cmake -S dlt-viewer -B dlt-viewer-build -G Ninja -DCMAKE_BUILD_TYPE=Release ${{ matrix.viewer-args }}
+          cmake --build dlt-viewer-build --target qdlt
+
+      - name: Build plugins
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_COMPILE_WARNING_AS_ERROR=ON \
+            -DDLT_VIEWER_SOURCE_DIR="$PWD/dlt-viewer" -DDLT_VIEWER_BUILD_DIR="$PWD/dlt-viewer-build"
+          cmake --build build
+          ls build/out/plugins

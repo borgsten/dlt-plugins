@@ -36,6 +36,13 @@ Plugins path) or install them with `cmake --install build` (target directory:
 `DLT_PLUGIN_INSTALL_DIR`, by default `<prefix>/lib/dlt-viewer/plugins`) and
 point the viewer there; system plugin directories belong to the package.
 
+## CI
+
+`.github/workflows/build.yml` builds libqdlt from dlt-viewer's master (or the
+ref given when run by hand) and the plugins against it, with Qt 5 and Qt 6 on
+Ubuntu 24.04 and 26.04, warnings as errors. It also runs weekly, to catch
+dlt-viewer changes that break the plugins.
+
 ## Debug output
 
 Qt sends `qDebug()` output to the systemd journal when stderr is not a

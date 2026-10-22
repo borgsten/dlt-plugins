@@ -195,8 +195,10 @@ class Proxy::Impl {
     }
 
     void stop() const {
-        const std::uint64_t one = 1;
-        static_cast<void>(::write(stop_.fd(), &one, sizeof(one)));
+        // EAGAIN: the counter is full, so it is signalled already.
+        if (::eventfd_write(stop_.fd(), 1) != 0 && errno != EAGAIN) {
+            log("waking the proxy thread failed: {}", lastError());
+        }
     }
 
  private:
