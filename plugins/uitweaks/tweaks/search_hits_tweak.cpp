@@ -12,16 +12,21 @@
 #include <QEvent>
 #include <QHash>
 #include <QHelpEvent>
+#include <QIcon>
 #include <QLineEdit>
 #include <QLocale>
 #include <QModelIndex>
 #include <QPainter>
+#include <QPen>
+#include <QPixmap>
 #include <QRadioButton>
+#include <QRectF>
 #include <QRegularExpression>
 #include <QSize>
 #include <QStyleOptionViewItem>
 #include <QStyledItemDelegate>
 #include <QTimer>
+#include <QToolBar>
 #include <QVariant>
 #include <qdlt/dltmessagematcher.h>
 #include <qdlt/qdltfile.h>
@@ -48,6 +53,7 @@ const plugin_utils::ColorField kColorField{
 };
 
 constexpr auto kSearchDialogClass = "CSearchDialog";
+const auto kSearchToolbarName = u"searchToolbar"_s;
 // Rows whose match is remembered; a screenful is far fewer.
 constexpr qsizetype kMaxCachedMatches = 4096;
 // The viewer rejects longer IDs.
@@ -114,6 +120,29 @@ std::optional<SearchMatcher> readSearch(const QObject& dialog) {
         search.pattern = text->text();
     }
     return search;
+}
+
+// The mark color, crossed out; colored, unlike the theme's clear icons, so
+// that it looks different while disabled.
+QIcon clearMarksIcon(const QColor& color) {
+    constexpr int kSize = 32;
+    constexpr int kInset = 3;
+    constexpr int kRadius = 5;
+    constexpr int kCrossInset = 9;
+    constexpr qreal kCrossWidth = 3.5;
+    constexpr int kBorderAlpha = 90;
+    QPixmap pixmap(kSize, kSize);
+    pixmap.fill(Qt::transparent);
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(QPen(QColor(0, 0, 0, kBorderAlpha), 1));
+    painter.setBrush(QColor(color.rgb()));
+    painter.drawRoundedRect(QRectF(kInset, kInset, kSize - (2 * kInset), kSize - (2 * kInset)), kRadius, kRadius);
+    painter.setPen(QPen(Qt::black, kCrossWidth, Qt::SolidLine, Qt::RoundCap));
+    painter.drawLine(kCrossInset, kCrossInset, kSize - kCrossInset, kSize - kCrossInset);
+    painter.drawLine(kCrossInset, kSize - kCrossInset, kSize - kCrossInset, kCrossInset);
+    painter.end();
+    return {pixmap};
 }
 
 // Both tables show the index with group separators ("%L1").
@@ -207,7 +236,12 @@ SearchHitsTweak::SearchHitsTweak(plugin_utils::PluginSettings settings, QWidget*
       main_window_(main_window),
       log_table_name_(std::move(log_table_name)),
       search_table_name_(std::move(search_table_name)),
-      index_column_(index_column) {}
+      index_column_(index_column) {
+    clear_action_.setText(u"Clear search marks"_s);
+    clear_action_.setIcon(clearMarksIcon(plugin_utils::colorValue(settings_, kColorField)));
+    clear_action_.setEnabled(false);
+    connect(&clear_action_, &QAction::triggered, this, [this] { setSearch(std::nullopt); });
+}
 
 void SearchHitsTweak::apply() {
     if (applied_ || !main_window_) {
@@ -258,6 +292,14 @@ void SearchHitsTweak::attach() {
         connect(model, &QAbstractItemModel::rowsInserted, this, on_changed),
         connect(*search_dialog, SIGNAL(searchProgressChanged(bool)), this, SLOT(onSearchProgressChanged(bool))),
     };
+
+    // At the end: the viewer finds the toolbar's own actions by position.
+    toolbar_ = main_window_->findChild<QToolBar*>(kSearchToolbarName);
+    if (toolbar_) {
+        toolbar_->addAction(&clear_action_);
+    } else {
+        qWarning() << "UI Tweaks: toolbar not found:" << kSearchToolbarName;
+    }
 }
 
 void SearchHitsTweak::revert() {
@@ -271,6 +313,10 @@ void SearchHitsTweak::revert() {
     }
     connections_.clear();
     searching_ = false;
+    if (toolbar_) {
+        toolbar_->removeAction(&clear_action_);
+    }
+    clear_action_.setEnabled(false);
 
     if (log_view_ && log_view_->itemDelegate() == delegate_) {
         if (previous_delegate_) {
@@ -288,6 +334,7 @@ void SearchHitsTweak::revert() {
 
 void SearchHitsTweak::buildSettings(plugin_utils::SettingsForm& form) {
     form.addColorPicker(kColorField, [this](const QColor& color) {
+        clear_action_.setIcon(clearMarksIcon(color));
         if (delegate_ && log_view_) {
             delegate_->setColor(color);
             log_view_->viewport()->update();
@@ -317,6 +364,7 @@ void SearchHitsTweak::onSearchProgressChanged(bool in_progress) {
 }
 
 void SearchHitsTweak::setSearch(std::optional<SearchMatcher> search) {
+    clear_action_.setEnabled(search.has_value());
     if (delegate_ && log_view_) {
         delegate_->setSearch(std::move(search));
         log_view_->viewport()->update();

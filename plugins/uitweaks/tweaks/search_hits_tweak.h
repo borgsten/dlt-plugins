@@ -5,11 +5,13 @@
 #include <QAbstractItemDelegate>
 #include <QAbstractItemModel>
 #include <QAbstractItemView>
+#include <QAction>
 #include <QList>
 #include <QMetaObject>
 #include <QObject>
 #include <QPointer>
 #include <QString>
+#include <QToolBar>
 #include <QWidget>
 #include <qdlt/qdltfile.h>
 
@@ -25,7 +27,8 @@ struct SearchMatcher;
  * included, by matching the visible rows with the search's own matcher, read
  * back from the search dialog. The search results themselves are not used:
  * copying them does not scale to huge files. Plugin decoders are not applied,
- * so their payloads match undecoded.
+ * so their payloads match undecoded. A button in the search toolbar clears
+ * the marks.
  */
 class SearchHitsTweak : public QObject, public ITweak {
     Q_OBJECT
@@ -59,5 +62,7 @@ class SearchHitsTweak : public QObject, public ITweak {
     QPointer<QObject> search_dialog_;
     QDltFile* file_ = nullptr;
     QList<QMetaObject::Connection> connections_;
+    QPointer<QToolBar> toolbar_;
+    QAction clear_action_;
     bool searching_ = false;
 };
