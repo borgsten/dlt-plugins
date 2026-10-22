@@ -3,8 +3,7 @@
 #include <ranges>
 
 #include <QDebug>
-
-#include "plugin_utils/qt_compat.h"
+#include <QtLogging>
 
 using namespace Qt::StringLiterals;
 

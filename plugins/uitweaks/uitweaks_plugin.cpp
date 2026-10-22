@@ -3,12 +3,12 @@
 #include <array>
 #include <cstddef>
 
+#include <QLatin1StringView>
 #include <QList>
 #include <QStringList>
 #include <qdlt/fieldnames.h>
 
 #include "plugin_utils/plugin_info.h"
-#include "plugin_utils/qt_compat.h"
 
 #include "tweaks/current_tab_tweak.h"
 #include "tweaks/filter_colors_tweak.h"

@@ -3,6 +3,7 @@
 #include <utility>
 
 #include <QDebug>
+#include <QtLogging>
 
 CurrentTabTweak::CurrentTabTweak(QWidget* main_window, QString tab_widget_name, QString tab_name)
     : main_window_(main_window), tab_widget_name_(std::move(tab_widget_name)), tab_name_(std::move(tab_name)) {}

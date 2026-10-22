@@ -5,8 +5,7 @@
 #include <QGroupBox>
 #include <QString>
 #include <QWidget>
-
-#include "plugin_utils/qt_compat.h"
+#include <QtLogging>
 
 using namespace Qt::StringLiterals;
 

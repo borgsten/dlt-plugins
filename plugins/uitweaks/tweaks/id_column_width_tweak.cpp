@@ -1,6 +1,5 @@
 #include "tweaks/id_column_width_tweak.h"
 
-#include <algorithm>
 #include <utility>
 
 #include <QDebug>
@@ -8,11 +7,12 @@
 #include <QFontMetrics>
 #include <QHeaderView>
 #include <QLatin1Char>
+#include <QLatin1StringView>
 #include <QStyle>
 #include <QTimer>
 #include <QWidget>
-
-#include "plugin_utils/qt_compat.h"
+#include <QtLogging>
+#include <QtMinMax>
 
 namespace {
 
@@ -24,7 +24,7 @@ int minimumIdWidth(const QTableView* table) {
     const QFontMetrics metrics(table->font());
     int widest_char = 0;
     for (char const c : kIdChars) {
-        widest_char = std::max(widest_char, metrics.horizontalAdvance(QLatin1Char(c)));
+        widest_char = qMax(widest_char, metrics.horizontalAdvance(QLatin1Char(c)));
     }
 
     // Item views draw text inset by this margin on both sides.

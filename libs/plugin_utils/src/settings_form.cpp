@@ -18,8 +18,6 @@
 #include <QVBoxLayout>
 #include <QtMath>
 
-#include "plugin_utils/qt_compat.h"
-
 using namespace Qt::StringLiterals;
 
 namespace plugin_utils {
@@ -48,9 +46,9 @@ QIcon swatch(const QColor& color) {
 }  // namespace
 
 QColor colorValue(const PluginSettings& settings, const ColorField& field) {
-    QColor color = colorFromString(settings.value(field.key, field.default_value));
+    QColor color = QColor::fromString(settings.value(field.key, field.default_value));
     if (!color.isValid()) {
-        color = colorFromString(field.default_value);
+        color = QColor::fromString(field.default_value);
     }
     color.setAlphaF(static_cast<float>(settings.value(field.opacity_key, field.default_opacity)) / kMaxOpacity);
     return color;
@@ -72,8 +70,7 @@ void SettingsForm::addSpinBox(const SpinBoxField& field, std::function<void(int)
     spin_box->setValue(settings_.value(field.key, field.default_value));
     // Don't report every typed digit.
     spin_box->setKeyboardTracking(false);
-    connect(spin_box.get(), qOverload<int>(&QSpinBox::valueChanged), this,
-            storeAndNotify(settings_, field.key, std::move(on_changed)));
+    connect(spin_box.get(), &QSpinBox::valueChanged, this, storeAndNotify(settings_, field.key, std::move(on_changed)));
     layout_.addRow(field.label, spin_box.release());
 }
 
@@ -110,11 +107,10 @@ void SettingsForm::addColorPicker(const ColorField& field, std::function<void(QC
             on_changed(colorValue(settings, field));
         }
     };
-    connect(opacity.get(), qOverload<int>(&QSpinBox::valueChanged), this,
-            [settings = settings_, field, notify](int value) {
-                settings.setValue(field.opacity_key, value);
-                notify();
-            });
+    connect(opacity.get(), &QSpinBox::valueChanged, this, [settings = settings_, field, notify](int value) {
+        settings.setValue(field.opacity_key, value);
+        notify();
+    });
     connect(button.get(), &QPushButton::clicked, this,
             [settings = settings_, field, notify, button = button.get(), opacity = opacity.get()] {
                 const QColor picked = QColorDialog::getColor(colorValue(settings, field), button, field.label,
@@ -145,7 +141,7 @@ void SettingsForm::addComboBox(const ComboBoxField& field, std::function<void(QS
     }
     const int current = combo_box->findData(settings_.value(field.key, field.default_value));
     combo_box->setCurrentIndex(current >= 0 ? current : combo_box->findData(field.default_value));
-    connect(combo_box.get(), qOverload<int>(&QComboBox::currentIndexChanged), this,
+    connect(combo_box.get(), &QComboBox::currentIndexChanged, this,
             [combo_box = combo_box.get(), store = storeAndNotify(settings_, field.key, std::move(on_changed))] {
                 store(combo_box->currentData().toString());
             });

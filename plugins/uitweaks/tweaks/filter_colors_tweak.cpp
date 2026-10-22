@@ -13,6 +13,7 @@
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
+#include <QLatin1StringView>
 #include <QPalette>
 #include <QPushButton>
 #include <QSet>
@@ -20,8 +21,7 @@
 #include <QString>
 #include <QTreeWidget>
 #include <QVBoxLayout>
-
-#include "plugin_utils/qt_compat.h"
+#include <QtLogging>
 
 using namespace Qt::StringLiterals;
 
@@ -272,7 +272,7 @@ class ShadesChooser : public QWidget {
     }
 
     void showShades(const HueFamily& family) {
-        for (QPushButton* swatch : shades_row_.findChildren<QPushButton*>(QString(), Qt::FindDirectChildrenOnly)) {
+        for (QPushButton* swatch : shades_row_.findChildren<QPushButton*>(Qt::FindDirectChildrenOnly)) {
             swatch->hide();
             swatch->deleteLater();
         }

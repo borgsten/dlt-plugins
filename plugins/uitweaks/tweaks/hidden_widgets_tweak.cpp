@@ -3,6 +3,7 @@
 #include <utility>
 
 #include <QDebug>
+#include <QtLogging>
 
 HiddenWidgetsTweak::HiddenWidgetsTweak(QWidget* main_window, QStringList object_names)
     : main_window_(main_window), object_names_(std::move(object_names)) {}

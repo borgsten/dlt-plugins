@@ -11,8 +11,7 @@
 #include <QPalette>
 #include <QStyleOptionViewItem>
 #include <QStyledItemDelegate>
-
-#include "plugin_utils/qt_compat.h"
+#include <QtLogging>
 
 using namespace Qt::StringLiterals;
 
@@ -126,7 +125,7 @@ void TextColorTweak::buildSettings(plugin_utils::SettingsForm& form) {
 bool TextColorTweak::eventFilter(QObject* watched, QEvent* event) {
     if (event->type() == QEvent::Show && watched->inherits(kFilterDialogClass)) {
         watchColorPreview(watched);
-    } else if (event->type() == QEvent::PaletteChange && color_previews_.contains(qobject_cast<QWidget*>(watched))) {
+    } else if (event->type() == QEvent::PaletteChange && color_previews_.contains(watched)) {
         updateColorPreview(qobject_cast<QWidget*>(watched));
     }
     return false;

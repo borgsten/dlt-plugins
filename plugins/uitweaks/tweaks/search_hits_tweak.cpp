@@ -28,12 +28,11 @@
 #include <QTimer>
 #include <QToolBar>
 #include <QVariant>
+#include <QtLogging>
 #include <qdlt/dltmessagematcher.h>
 #include <qdlt/qdltfile.h>
 #include <qdlt/qdltmsg.h>
 #include <qdlt/qdltsettingsmanager.h>
-
-#include "plugin_utils/qt_compat.h"
 
 using namespace Qt::StringLiterals;
 
