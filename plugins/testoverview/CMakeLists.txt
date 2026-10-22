@@ -1,0 +1,13 @@
+dlt_add_plugin(testoverviewplugin
+    testoverview_plugin.h
+    testoverview_plugin.cpp
+    index_range_filter.h
+    index_range_filter.cpp
+    log_scanner.h
+    log_scanner.cpp
+    test_tree_view.h
+    test_tree_view.cpp
+    token_parser.h
+    token_parser.cpp
+    resources/testoverview.qrc
+)

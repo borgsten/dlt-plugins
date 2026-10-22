@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/testoverview">
+        <file>tests.png</file>
+    </qresource>
+</RCC>

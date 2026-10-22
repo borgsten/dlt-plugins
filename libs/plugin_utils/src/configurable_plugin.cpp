@@ -6,6 +6,7 @@
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QSize>
+#include <QTabWidget>
 
 namespace plugin_utils {
 
@@ -40,7 +41,15 @@ QWidget* ConfigurablePlugin::initViewer() {
     auto scroll_area = std::make_unique<VerticalScrollArea>();
     scroll_area->setWidget(form.release());
     // The viewer puts the widget in a dock widget, which takes ownership.
-    return scroll_area.release();
+    std::unique_ptr<QWidget> view = createView();
+    if (!view) {
+        return scroll_area.release();
+    }
+    auto tabs = std::make_unique<QTabWidget>();
+    const QString title = view->windowTitle();
+    tabs->addTab(view.release(), title);
+    tabs->addTab(scroll_area.release(), QTabWidget::tr("Settings"));
+    return tabs.release();
 }
 
 }  // namespace plugin_utils

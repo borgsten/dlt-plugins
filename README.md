@@ -88,7 +88,7 @@ Use snake_case file names. Avoid names starting with `ui_`: AUTOUIC treats
 Shared helpers linked into every plugin: plugin metadata and settings, a base
 class for plugins that act on the main window, and one that adds a settings
 dock built from a form of checkboxes, spin boxes, text fields and combo boxes
-bound to the plugin's settings.
+bound to the plugin's settings, next to the plugin's own view if it has one.
 
 ## Plugins
 
@@ -103,6 +103,10 @@ bound to the plugin's settings.
   - unclip the filter dialog's type buttons (temporary, until fixed upstream)
 - `plugins/dltproxy`: forwards selected app IDs from a DLT source to a local
   port, for an ECU in the project to connect to
+- `plugins/testoverview`: lists the test suites and tests a test framework
+  logs, found by configurable start/end token patterns, with their results;
+  goes to a suite or test, or limits the log to it. Its "Tests" toolbar
+  button shows it; it reads the log, on its own thread, only while shown.
 
 ## Tools
 
