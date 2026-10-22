@@ -6,6 +6,7 @@
 #include "plugin_utils/settings_form.h"
 
 #include "tweak_list.h"
+#include "tweaks/search_hits_tweak.h"
 
 class UiTweaksPlugin : public plugin_utils::ConfigurablePlugin {
     Q_OBJECT
@@ -17,6 +18,8 @@ class UiTweaksPlugin : public plugin_utils::ConfigurablePlugin {
  public:
     UiTweaksPlugin();
 
+    void initFileStart(QDltFile* file) override;
+
  protected:
     void onMainWindowReady(QWidget* main_window) override;
     void onEnabledChanged(bool enabled) override;
@@ -24,4 +27,5 @@ class UiTweaksPlugin : public plugin_utils::ConfigurablePlugin {
 
  private:
     TweakList tweaks_;
+    SearchHitsTweak* search_hits_ = nullptr;
 };

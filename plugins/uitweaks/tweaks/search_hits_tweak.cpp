@@ -5,23 +5,37 @@
 #include <optional>
 #include <utility>
 
+#include <QCheckBox>
+#include <QDateTimeEdit>
 #include <QDebug>
 #include <QDialog>
 #include <QEvent>
+#include <QHash>
 #include <QHelpEvent>
+#include <QLineEdit>
 #include <QLocale>
 #include <QModelIndex>
 #include <QPainter>
-#include <QSet>
+#include <QRadioButton>
+#include <QRegularExpression>
 #include <QSize>
 #include <QStyleOptionViewItem>
 #include <QStyledItemDelegate>
 #include <QTimer>
 #include <QVariant>
+#include <qdlt/dltmessagematcher.h>
+#include <qdlt/qdltfile.h>
+#include <qdlt/qdltmsg.h>
+#include <qdlt/qdltsettingsmanager.h>
 
 #include "plugin_utils/qt_compat.h"
 
 using namespace Qt::StringLiterals;
+
+struct SearchMatcher {
+    DltMessageMatcher matcher;
+    DltMessageMatcher::Pattern pattern;
+};
 
 namespace {
 
@@ -34,6 +48,73 @@ const plugin_utils::ColorField kColorField{
 };
 
 constexpr auto kSearchDialogClass = "CSearchDialog";
+// Rows whose match is remembered; a screenful is far fewer.
+constexpr qsizetype kMaxCachedMatches = 4096;
+// The viewer rejects longer IDs.
+constexpr int kMaxIdLength = 4;
+
+// What CSearchDialog::find() and startParallelFindAll() give the matcher.
+std::optional<SearchMatcher> readSearch(const QObject& dialog) {
+    const auto* text = dialog.findChild<QLineEdit*>(u"lineEditSearch"_s);
+    const auto* regexp = dialog.findChild<QCheckBox*>(u"checkBoxRegExp"_s);
+    const auto* case_sensitive = dialog.findChild<QCheckBox*>(u"checkBoxCaseSensitive"_s);
+    const auto* header = dialog.findChild<QCheckBox*>(u"checkBoxHeader"_s);
+    const auto* payload = dialog.findChild<QCheckBox*>(u"checkBoxPayload"_s);
+    const auto* app_id = dialog.findChild<QLineEdit*>(u"lineEditApld"_s);
+    const auto* ctx_id = dialog.findChild<QLineEdit*>(u"lineEditCtid"_s);
+    const auto* timestamp_range = dialog.findChild<QRadioButton*>(u"radioTimestamp"_s);
+    const auto* timestamp_start = dialog.findChild<QLineEdit*>(u"lineEditTimestampStart"_s);
+    const auto* timestamp_end = dialog.findChild<QLineEdit*>(u"lineEditTimestampEnd"_s);
+    const auto* time_range = dialog.findChild<QRadioButton*>(u"radioTime"_s);
+    const auto* time_start = dialog.findChild<QDateTimeEdit*>(u"dateTimeStart"_s);
+    const auto* time_end = dialog.findChild<QDateTimeEdit*>(u"dateTimeEnd"_s);
+    if (text == nullptr || regexp == nullptr || case_sensitive == nullptr || header == nullptr || payload == nullptr ||
+        app_id == nullptr || ctx_id == nullptr || timestamp_range == nullptr || timestamp_start == nullptr ||
+        timestamp_end == nullptr || time_range == nullptr || time_start == nullptr || time_end == nullptr) {
+        qWarning() << "UI Tweaks: search dialog widgets not found, not marking new matches";
+        return std::nullopt;
+    }
+    if (app_id->text().size() > kMaxIdLength || ctx_id->text().size() > kMaxIdLength) {
+        return std::nullopt;
+    }
+
+    SearchMatcher search;
+    DltMessageMatcher& matcher = search.matcher;
+    matcher.setCaseSentivity(case_sensitive->isChecked() ? Qt::CaseSensitive : Qt::CaseInsensitive);
+    matcher.setSearchAppId(app_id->text());
+    matcher.setSearchCtxId(ctx_id->text());
+    matcher.setHeaderSearchEnabled(header->isChecked());
+    matcher.setPayloadSearchEnabled(payload->isChecked());
+    if (timestamp_range->isChecked() && !timestamp_start->text().isEmpty() && !timestamp_end->text().isEmpty()) {
+        const double start = timestamp_start->text().toDouble();
+        const double end = timestamp_end->text().toDouble();
+        if (end >= start) {
+            matcher.setTimestampRange(start, end);
+        }
+    }
+    if (time_range->isChecked()) {
+        matcher.setTimeRange(time_start->dateTime(), time_end->dateTime());
+    }
+    const QDltSettingsManager* viewer_settings = QDltSettingsManager::getInstance();
+    if (viewer_settings->value(u"startup/showMsgId"_s, true).toBool()) {
+        matcher.setMessageIdFormat(viewer_settings->value(u"startup/msgIdFormat"_s, u"0x%x"_s).toString());
+    }
+
+    if (regexp->isChecked()) {
+        QRegularExpression::PatternOptions options = QRegularExpression::DotMatchesEverythingOption;
+        if (!case_sensitive->isChecked()) {
+            options |= QRegularExpression::CaseInsensitiveOption;
+        }
+        QRegularExpression pattern(text->text(), options);
+        if (!pattern.isValid()) {
+            return std::nullopt;
+        }
+        search.pattern = std::move(pattern);
+    } else {
+        search.pattern = text->text();
+    }
+    return search;
+}
 
 // Both tables show the index with group separators ("%L1").
 std::optional<qulonglong> messageIndex(const QModelIndex& index) {
@@ -44,22 +125,31 @@ std::optional<qulonglong> messageIndex(const QModelIndex& index) {
 
 }  // namespace
 
-/* Paints like the delegate it replaces, then tints the rows of search hits */
+/* Paints like the delegate it replaces, then tints the rows the search matches */
 class SearchHitsDelegate : public QAbstractItemDelegate {
  public:
     SearchHitsDelegate(QAbstractItemDelegate* inner, int index_column, QColor color, QObject* parent)
         : QAbstractItemDelegate(parent), inner_(inner), index_column_(index_column), color_(color) {}
 
     void setColor(QColor color) { color_ = color; }
-    void setHits(QSet<qulonglong> hits) { hits_ = std::move(hits); }
+
+    void setSearch(std::optional<SearchMatcher> search) {
+        search_ = std::move(search);
+        matches_.clear();
+    }
+
+    void setFile(QDltFile* file) {
+        file_ = file;
+        matches_.clear();
+    }
 
     void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override {
         inner()->paint(painter, option, index);
-        if (hits_.isEmpty()) {
+        if (!search_ || file_ == nullptr) {
             return;
         }
         const std::optional<qulonglong> message = messageIndex(index.siblingAtColumn(index_column_));
-        if (message && hits_.contains(*message)) {
+        if (message && matches(*search_, *message)) {
             painter->fillRect(option.rect, color_);
         }
     }
@@ -79,6 +169,25 @@ class SearchHitsDelegate : public QAbstractItemDelegate {
     }
 
  private:
+    // Each cell of a row asks; the message is read and matched once.
+    [[nodiscard]] bool matches(const SearchMatcher& search, qulonglong index) const {
+        if (const auto cached = matches_.constFind(index); cached != matches_.cend()) {
+            return *cached;
+        }
+        QDltMsg msg;
+        // Not getMsg(), whose cache the viewer tunes for its own reads.
+        bool match = file_->getMsgNoCache(static_cast<int>(index), msg);
+        if (match) {
+            msg.setIndex(static_cast<int>(index));
+            match = search.matcher.match(msg, search.pattern);
+        }
+        if (matches_.size() >= kMaxCachedMatches) {
+            matches_.clear();
+        }
+        matches_.insert(index, match);
+        return match;
+    }
+
     // Another tweak may delete the delegate this one wraps.
     [[nodiscard]] QAbstractItemDelegate* inner() const { return inner_ ? inner_.data() : &fallback_; }
 
@@ -86,7 +195,10 @@ class SearchHitsDelegate : public QAbstractItemDelegate {
     mutable QStyledItemDelegate fallback_;
     int index_column_;
     QColor color_;
-    QSet<qulonglong> hits_;
+    std::optional<SearchMatcher> search_;
+    // The viewer's, which outlives the views.
+    QDltFile* file_ = nullptr;
+    mutable QHash<qulonglong, bool> matches_;
 };
 
 SearchHitsTweak::SearchHitsTweak(plugin_utils::PluginSettings settings, QWidget* main_window, QString log_table_name,
@@ -95,13 +207,7 @@ SearchHitsTweak::SearchHitsTweak(plugin_utils::PluginSettings settings, QWidget*
       main_window_(main_window),
       log_table_name_(std::move(log_table_name)),
       search_table_name_(std::move(search_table_name)),
-      index_column_(index_column) {
-    // Coalesces changes made one result at a time, as when the viewer restores
-    // a search from its history.
-    rebuild_timer_.setSingleShot(true);
-    rebuild_timer_.setInterval(0);
-    connect(&rebuild_timer_, &QTimer::timeout, this, &SearchHitsTweak::rebuildHits);
-}
+      index_column_(index_column) {}
 
 void SearchHitsTweak::apply() {
     if (applied_ || !main_window_) {
@@ -133,15 +239,16 @@ void SearchHitsTweak::attach() {
     auto delegate = std::make_unique<SearchHitsDelegate>(previous_delegate_, index_column_,
                                                          plugin_utils::colorValue(settings_, kColorField), log_view);
     delegate_ = delegate.get();
+    delegate_->setFile(file_);
     log_view->setItemDelegate(delegate.release());
 
-    search_model_ = search_view->model();
-    const QAbstractItemModel* model = search_model_;
-    // A search adds its results in many batches, then all of them again in
-    // order; reading them as they come made searches much slower.
+    search_dialog_ = *search_dialog;
+    const QAbstractItemModel* model = search_view->model();
+    // Results changed outside a search, as when a file is opened or filters
+    // are applied: what they are is unknown, so are the matches.
     const auto on_changed = [this] {
         if (!searching_) {
-            rebuild_timer_.start();
+            setSearch(std::nullopt);
         }
     };
     connections_ = {
@@ -151,7 +258,6 @@ void SearchHitsTweak::attach() {
         connect(model, &QAbstractItemModel::rowsInserted, this, on_changed),
         connect(*search_dialog, SIGNAL(searchProgressChanged(bool)), this, SLOT(onSearchProgressChanged(bool))),
     };
-    rebuildHits();
 }
 
 void SearchHitsTweak::revert() {
@@ -164,7 +270,6 @@ void SearchHitsTweak::revert() {
         disconnect(connection);
     }
     connections_.clear();
-    rebuild_timer_.stop();
     searching_ = false;
 
     if (log_view_ && log_view_->itemDelegate() == delegate_) {
@@ -190,26 +295,30 @@ void SearchHitsTweak::buildSettings(plugin_utils::SettingsForm& form) {
     });
 }
 
-void SearchHitsTweak::onSearchProgressChanged(bool in_progress) {
-    searching_ = in_progress;
-    if (!in_progress) {
-        rebuildHits();
+void SearchHitsTweak::setFile(QDltFile* file) {
+    file_ = file;
+    if (delegate_) {
+        delegate_->setFile(file);
     }
 }
 
-void SearchHitsTweak::rebuildHits() {
-    rebuild_timer_.stop();
-    if (!delegate_ || !search_model_ || !log_view_) {
+void SearchHitsTweak::onSearchProgressChanged(bool in_progress) {
+    searching_ = in_progress;
+    if (!in_progress || !search_dialog_) {
         return;
     }
-    QSet<qulonglong> hits;
-    const int rows = search_model_->rowCount();
-    hits.reserve(rows);
-    for (int row = 0; row < rows; ++row) {
-        if (const std::optional<qulonglong> message = messageIndex(search_model_->index(row, index_column_))) {
-            hits.insert(*message);
+    // Only Find All fills the results; a search the viewer rejects leaves them.
+    const auto* find_all = search_dialog_->findChild<QCheckBox*>(u"checkBoxFindAll"_s);
+    if (find_all != nullptr && find_all->isChecked()) {
+        if (std::optional<SearchMatcher> search = readSearch(*search_dialog_)) {
+            setSearch(std::move(search));
         }
     }
-    delegate_->setHits(std::move(hits));
-    log_view_->viewport()->update();
+}
+
+void SearchHitsTweak::setSearch(std::optional<SearchMatcher> search) {
+    if (delegate_ && log_view_) {
+        delegate_->setSearch(std::move(search));
+        log_view_->viewport()->update();
+    }
 }

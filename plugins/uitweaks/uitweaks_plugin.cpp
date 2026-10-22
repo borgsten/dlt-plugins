@@ -75,8 +75,9 @@ void UiTweaksPlugin::onMainWindowReady(QWidget* main_window) {
                                     main_window, toStringList(kLogTables), FieldNames::Payload);
     tweaks_.add<TextColorTweak>({.id = "textColor", .title = "Prefer dark text on filter colors"}, main_window,
                                 toStringList(kFilterColoredViews));
-    tweaks_.add<SearchHitsTweak>({.id = "searchHits", .title = "Mark search results in the log"}, main_window,
-                                 u"tableView"_s, u"tableView_SearchIndex"_s, FieldNames::Index);
+    search_hits_ =
+        &tweaks_.add<SearchHitsTweak>({.id = "searchHits", .title = "Mark search results in the log"}, main_window,
+                                      u"tableView"_s, u"tableView_SearchIndex"_s, FieldNames::Index);
     tweaks_.add<FilterColorsTweak>({.id = "filterColors", .title = "Soft filter color palette"}, main_window);
     tweaks_.add<FilterTypeBoxTweak>({.id = "filterTypeBox", .title = "Unclip the filter type buttons (temporary)"});
     tweaks_.add<CurrentTabTweak>({.id = "filterTab", .title = "Start on the Filter tab"}, main_window, u"tabWidget"_s,
@@ -87,3 +88,9 @@ void UiTweaksPlugin::onMainWindowReady(QWidget* main_window) {
 void UiTweaksPlugin::onEnabledChanged(bool enabled) { tweaks_.setEnabled(enabled); }
 
 void UiTweaksPlugin::buildSettingsForm(plugin_utils::SettingsForm& form) { tweaks_.buildSettingsForm(form); }
+
+void UiTweaksPlugin::initFileStart(QDltFile* file) {
+    if (search_hits_ != nullptr) {
+        search_hits_->setFile(file);
+    }
+}
