@@ -8,18 +8,14 @@ plugin_dir := "build/plugins"
 default:
     @just --list
 
-build:
-    cmake -S . -B {{debug_dir}} -DCMAKE_BUILD_TYPE=Debug
-    cmake --build {{debug_dir}} -j
-    @just _publish {{debug_dir}}
-    ln -sf {{debug_dir}}/compile_commands.json compile_commands.json
+# just build [debug|release]
+build type="debug":
+    cmake -S . -B build/{{type}} -DCMAKE_BUILD_TYPE={{ if type == "debug" { "Debug" } else if type == "release" { "Release" } else { error("build type is debug or release") } }}
+    cmake --build build/{{type}} -j
+    @just _publish build/{{type}}
+    {{ if type == "debug" { "ln -sf " + debug_dir + "/compile_commands.json compile_commands.json" } else { "" } }}
 
-release:
-    cmake -S . -B {{release_dir}} -DCMAKE_BUILD_TYPE=Release
-    cmake --build {{release_dir}} -j
-    @just _publish {{release_dir}}
-
-install: release
+install: (build "release")
     #!/usr/bin/env bash
     set -euo pipefail
     dir=$(cmake -L -N {{release_dir}} | sed -n 's/^DLT_PLUGIN_INSTALL_DIR:PATH=//p')

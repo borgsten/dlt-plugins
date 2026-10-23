@@ -5,13 +5,13 @@ Out-of-tree plugins for [dlt-viewer](https://github.com/COVESA/dlt-viewer).
 ## Building
 
 ```sh
-just build     # debug build in build/debug
-just release   # release build in build/release
-               # both copy the plugins to build/plugins
-just install   # install the release plugins
-just format    # clang-format all sources
-just lint      # clang-tidy all sources
-just clean     # remove build/
+just build           # debug build in build/debug (also: just build debug)
+just build release   # release build in build/release
+                     # both copy the plugins to build/plugins
+just install         # install the release plugins
+just format          # clang-format all sources
+just lint            # clang-tidy all sources
+just clean           # remove build/
 ```
 
 or with plain CMake:
