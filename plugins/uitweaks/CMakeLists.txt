@@ -24,4 +24,5 @@ dlt_add_plugin(uitweaksplugin
     tweaks/search_hits_tweak.cpp
     tweaks/text_color_tweak.h
     tweaks/text_color_tweak.cpp
+    resources/uitweaks.qrc
 )

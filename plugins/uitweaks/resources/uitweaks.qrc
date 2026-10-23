@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/uitweaks">
+        <file>clear_search_marks.png</file>
+    </qresource>
+</RCC>

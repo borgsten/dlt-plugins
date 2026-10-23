@@ -17,10 +17,7 @@
 #include <QLocale>
 #include <QModelIndex>
 #include <QPainter>
-#include <QPen>
-#include <QPixmap>
 #include <QRadioButton>
-#include <QRectF>
 #include <QRegularExpression>
 #include <QSize>
 #include <QStyleOptionViewItem>
@@ -122,29 +119,6 @@ std::optional<SearchMatcher> readSearch(const QObject& dialog) {
     return search;
 }
 
-// The mark color, crossed out; colored, unlike the theme's clear icons, so
-// that it looks different while disabled.
-QIcon clearMarksIcon(const QColor& color) {
-    constexpr int kSize = 32;
-    constexpr int kInset = 3;
-    constexpr int kRadius = 5;
-    constexpr int kCrossInset = 9;
-    constexpr qreal kCrossWidth = 3.5;
-    constexpr int kBorderAlpha = 90;
-    QPixmap pixmap(kSize, kSize);
-    pixmap.fill(Qt::transparent);
-    QPainter painter(&pixmap);
-    painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(QColor(0, 0, 0, kBorderAlpha), 1));
-    painter.setBrush(QColor(color.rgb()));
-    painter.drawRoundedRect(QRectF(kInset, kInset, kSize - (2 * kInset), kSize - (2 * kInset)), kRadius, kRadius);
-    painter.setPen(QPen(Qt::black, kCrossWidth, Qt::SolidLine, Qt::RoundCap));
-    painter.drawLine(kCrossInset, kCrossInset, kSize - kCrossInset, kSize - kCrossInset);
-    painter.drawLine(kCrossInset, kSize - kCrossInset, kSize - kCrossInset, kCrossInset);
-    painter.end();
-    return {pixmap};
-}
-
 // Both tables show the index with group separators ("%L1").
 std::optional<qulonglong> messageIndex(const QModelIndex& index) {
     bool parsed = false;
@@ -238,7 +212,7 @@ SearchHitsTweak::SearchHitsTweak(plugin_utils::PluginSettings settings, QWidget*
       search_table_name_(std::move(search_table_name)),
       index_column_(index_column) {
     clear_action_.setText(u"Clear search marks"_s);
-    clear_action_.setIcon(clearMarksIcon(plugin_utils::colorValue(settings_, kColorField)));
+    clear_action_.setIcon(QIcon(u":/uitweaks/clear_search_marks.png"_s));
     clear_action_.setEnabled(false);
     connect(&clear_action_, &QAction::triggered, this, [this] { setSearch(std::nullopt); });
 }
@@ -334,7 +308,6 @@ void SearchHitsTweak::revert() {
 
 void SearchHitsTweak::buildSettings(plugin_utils::SettingsForm& form) {
     form.addColorPicker(kColorField, [this](const QColor& color) {
-        clear_action_.setIcon(clearMarksIcon(color));
         if (delegate_ && log_view_) {
             delegate_->setColor(color);
             log_view_->viewport()->update();
